@@ -1,99 +1,269 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+/**
+ * ClawVault Obsidian Plugin
+ * Visual memory management for ClawVault vaults
+ */
 
-// Remember to rename these classes and interfaces!
+import { Plugin, WorkspaceLeaf } from "obsidian";
+import { ClawVaultSettings, ClawVaultSettingTab, DEFAULT_SETTINGS } from "./settings";
+import { VaultReader } from "./vault-reader";
+import { ClawVaultStatusView } from "./status-view";
+import { FileDecorations } from "./decorations";
+import { registerCommands } from "./commands";
+import { STATUS_VIEW_TYPE, DEFAULT_CATEGORY_COLORS } from "./constants";
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class ClawVaultPlugin extends Plugin {
+	settings: ClawVaultSettings = DEFAULT_SETTINGS;
+	vaultReader: VaultReader = null!;
+	
+	private statusBarItem: HTMLElement | null = null;
+	private refreshIntervalId: number | null = null;
+	private fileDecorations: FileDecorations | null = null;
+	private styleEl: HTMLStyleElement | null = null;
 
-	async onload() {
+	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+		// Initialize vault reader
+		this.vaultReader = new VaultReader(this.app);
+
+		// Register the status view
+		this.registerView(STATUS_VIEW_TYPE, (leaf: WorkspaceLeaf) => {
+			return new ClawVaultStatusView(leaf, this);
 		});
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			}
+		// Add ribbon icon
+		this.addRibbonIcon("database", "ClawVault Status", () => {
+			this.activateStatusView();
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
+		// Add status bar item
+		this.statusBarItem = this.addStatusBarItem();
+		this.statusBarItem.addClass("clawvault-status-bar");
+		this.statusBarItem.addEventListener("click", () => {
+			this.activateStatusView();
 		});
+		this.updateStatusBarVisibility();
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		// Register commands
+		registerCommands(this);
 
+		// Add settings tab
+		this.addSettingTab(new ClawVaultSettingTab(this.app, this));
+
+		// Initialize file decorations
+		this.fileDecorations = new FileDecorations(this);
+		this.fileDecorations.initialize();
+
+		// Inject graph styles
+		this.injectGraphStyles();
+
+		// Start refresh interval
+		this.startRefreshInterval();
+
+		// Initial status bar update
+		this.updateStatusBar();
+
+		console.log("ClawVault plugin loaded");
 	}
 
-	onunload() {
+	onunload(): void {
+		// Clean up refresh interval
+		if (this.refreshIntervalId !== null) {
+			window.clearInterval(this.refreshIntervalId);
+			this.refreshIntervalId = null;
+		}
+
+		// Clean up file decorations
+		if (this.fileDecorations) {
+			this.fileDecorations.cleanup();
+			this.fileDecorations = null;
+		}
+
+		// Clean up injected styles
+		if (this.styleEl) {
+			this.styleEl.remove();
+			this.styleEl = null;
+		}
+
+		// Detach all status views
+		this.app.workspace.detachLeavesOfType(STATUS_VIEW_TYPE);
+
+		console.log("ClawVault plugin unloaded");
 	}
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
+	async loadSettings(): Promise<void> {
+		const data = await this.loadData();
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data as Partial<ClawVaultSettings>);
+		
+		// Merge category colors with defaults
+		this.settings.categoryColors = Object.assign(
+			{},
+			DEFAULT_CATEGORY_COLORS,
+			this.settings.categoryColors
+		);
 	}
 
-	async saveSettings() {
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
 	}
+
+	/**
+	 * Activate the status view in the right sidebar
+	 */
+	async activateStatusView(): Promise<void> {
+		const { workspace } = this.app;
+
+		let leaf = workspace.getLeavesOfType(STATUS_VIEW_TYPE)[0];
+
+		if (!leaf) {
+			const rightLeaf = workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({
+					type: STATUS_VIEW_TYPE,
+					active: true,
+				});
+				leaf = rightLeaf;
+			}
+		}
+
+		if (leaf) {
+			workspace.revealLeaf(leaf);
+		}
+	}
+
+	/**
+	 * Update status bar visibility based on settings
+	 */
+	updateStatusBarVisibility(): void {
+		if (this.statusBarItem) {
+			if (this.settings.showStatusBar) {
+				this.statusBarItem.show();
+			} else {
+				this.statusBarItem.hide();
+			}
+		}
+	}
+
+	/**
+	 * Update status bar content
+	 */
+	async updateStatusBar(): Promise<void> {
+		if (!this.statusBarItem || !this.settings.showStatusBar) return;
+
+		try {
+			const stats = await this.vaultReader.getVaultStats();
+			const activeTaskCount = stats.tasks.active + stats.tasks.open;
+			this.statusBarItem.setText(
+				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${activeTaskCount} tasks`
+			);
+		} catch (error) {
+			this.statusBarItem.setText("🐘 ClawVault");
+		}
+	}
+
+	/**
+	 * Start the auto-refresh interval
+	 */
+	startRefreshInterval(): void {
+		if (this.refreshIntervalId !== null) {
+			window.clearInterval(this.refreshIntervalId);
+		}
+
+		this.refreshIntervalId = window.setInterval(() => {
+			this.refreshAll();
+		}, this.settings.refreshInterval);
+
+		// Register for cleanup
+		this.registerInterval(this.refreshIntervalId);
+	}
+
+	/**
+	 * Restart the refresh interval (called when settings change)
+	 */
+	restartRefreshInterval(): void {
+		this.startRefreshInterval();
+	}
+
+	/**
+	 * Refresh all plugin data
+	 */
+	async refreshAll(): Promise<void> {
+		// Clear vault reader cache
+		this.vaultReader.clearCache();
+
+		// Update status bar
+		await this.updateStatusBar();
+
+		// Refresh status view if open
+		const leaves = this.app.workspace.getLeavesOfType(STATUS_VIEW_TYPE);
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof ClawVaultStatusView) {
+				await view.refresh();
+			}
+		}
+
+		// Update file decorations
+		if (this.fileDecorations) {
+			await this.fileDecorations.decorateAllFiles();
+		}
+	}
+
+	/**
+	 * Inject CSS styles for graph coloring
+	 */
+	injectGraphStyles(): void {
+		// Remove existing style element
+		if (this.styleEl) {
+			this.styleEl.remove();
+		}
+
+		// Create new style element
+		this.styleEl = document.createElement("style");
+		this.styleEl.id = "clawvault-graph-styles";
+		this.updateGraphStyleContent();
+		document.head.appendChild(this.styleEl);
+	}
+
+	/**
+	 * Update the graph style content
+	 */
+	private updateGraphStyleContent(): void {
+		if (!this.styleEl) return;
+
+		const colors = this.settings.categoryColors;
+		const cssRules: string[] = [];
+
+		// Generate CSS custom properties for each category
+		cssRules.push(`:root {`);
+		for (const [category, color] of Object.entries(colors)) {
+			cssRules.push(`  --clawvault-color-${category}: ${color};`);
+		}
+		cssRules.push(`}`);
+
+		// Graph node styling based on data attributes
+		// Note: Obsidian's graph doesn't natively support folder-based coloring,
+		// but we can use CSS classes that could be added via other means
+		for (const [category, color] of Object.entries(colors)) {
+			cssRules.push(`
+.graph-view.color-fill-${category} .node circle,
+.graph-view .node.${category} circle {
+  fill: ${color} !important;
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
+.graph-view.color-fill-${category} .node text,
+.graph-view .node.${category} text {
+  fill: ${color} !important;
+}`);
+		}
+
+		this.styleEl.textContent = cssRules.join("\n");
 	}
 
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
+	/**
+	 * Update graph styles (called when settings change)
+	 */
+	updateGraphStyles(): void {
+		this.updateGraphStyleContent();
 	}
 }
