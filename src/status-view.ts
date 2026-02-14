@@ -3,7 +3,7 @@
  * Sidebar panel showing vault statistics
  */
 
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
 import type ClawVaultPlugin from "./main";
 import { COMMAND_IDS, STATUS_VIEW_TYPE } from "./constants";
 import type { ObservationSession, ParsedTask, VaultStats } from "./vault-reader";
@@ -13,6 +13,8 @@ interface StatusViewData {
 	backlogItems: ParsedTask[];
 	recentSessions: ObservationSession[];
 	openLoops: ParsedTask[];
+	graphTypes: Record<string, number>;
+	todayObs: { count: number; categories: string[] };
 }
 
 /**
@@ -63,17 +65,21 @@ export class ClawVaultStatusView extends ItemView {
 		this.statusContentEl.empty();
 
 		try {
-			const [stats, backlogItems, recentSessions, openLoops] = await Promise.all([
+			const [stats, backlogItems, recentSessions, openLoops, graphTypes, todayObs] = await Promise.all([
 				this.plugin.vaultReader.getVaultStats(),
 				this.plugin.vaultReader.getBacklogTasks(5),
 				this.plugin.vaultReader.getRecentObservationSessions(5),
 				this.plugin.vaultReader.getOpenLoops(7),
+				this.plugin.vaultReader.getGraphTypeSummary(),
+				this.plugin.vaultReader.getTodayObservations(),
 			]);
 			this.renderStats({
 				stats,
 				backlogItems,
 				recentSessions,
 				openLoops,
+				graphTypes,
+				todayObs,
 			});
 		} catch (error) {
 			this.renderError(error);
@@ -85,7 +91,7 @@ export class ClawVaultStatusView extends ItemView {
 	 */
 	private renderStats(data: StatusViewData): void {
 		if (!this.statusContentEl) return;
-		const { stats, backlogItems, recentSessions, openLoops } = data;
+		const { stats, backlogItems, recentSessions, openLoops, graphTypes, todayObs } = data;
 
 		// Header
 		const header = this.statusContentEl.createDiv({ cls: "clawvault-status-header" });
@@ -102,6 +108,60 @@ export class ClawVaultStatusView extends ItemView {
 			text: `Files: ${this.formatNumber(stats.fileCount)} | Nodes: ${this.formatNumber(stats.nodeCount)} | Edges: ${this.formatNumber(stats.edgeCount)}`,
 			cls: "clawvault-status-counts",
 		});
+
+		// Memory Graph section
+		if (stats.nodeCount > 0 || Object.keys(graphTypes).length > 0) {
+			const graphSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
+			graphSection.createEl("h4", { text: "Memory Graph" });
+
+			const graphStats = graphSection.createDiv({ cls: "clawvault-graph-stats" });
+			graphStats.createDiv({
+				text: `🔗 ${this.formatNumber(stats.nodeCount)} nodes · ${this.formatNumber(stats.edgeCount)} edges`,
+				cls: "clawvault-graph-totals",
+			});
+
+			// Node type breakdown (top 5)
+			const sortedTypes = Object.entries(graphTypes)
+				.sort((a, b) => b[1] - a[1])
+				.slice(0, 6);
+			if (sortedTypes.length > 0) {
+				const typeGrid = graphSection.createDiv({ cls: "clawvault-graph-type-grid" });
+				for (const [type, count] of sortedTypes) {
+					const typeEl = typeGrid.createDiv({ cls: "clawvault-graph-type-item" });
+					typeEl.createSpan({ text: `${count}`, cls: "clawvault-graph-type-count" });
+					typeEl.createSpan({ text: ` ${type}`, cls: "clawvault-graph-type-label" });
+				}
+			}
+		}
+
+		// Today's observations
+		if (todayObs.count > 0) {
+			const obsSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
+			obsSection.createDiv({
+				text: `🔭 ${todayObs.count} observation${todayObs.count === 1 ? "" : "s"} today`,
+				cls: "clawvault-obs-today",
+			});
+			if (todayObs.categories.length > 0) {
+				obsSection.createDiv({
+					text: `→ ${todayObs.categories.join(", ")}`,
+					cls: "clawvault-obs-categories",
+				});
+			}
+		}
+
+		// Kanban board link
+		const boardFile = this.app.vault.getAbstractFileByPath("Board.md");
+		if (boardFile instanceof TFile) {
+			const kanbanSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
+			const kanbanLink = kanbanSection.createEl("a", {
+				text: "📋 Open Kanban Board",
+				cls: "clawvault-kanban-link",
+			});
+			kanbanLink.addEventListener("click", (event) => {
+				event.preventDefault();
+				void this.app.workspace.openLinkText("Board.md", "", "tab");
+			});
+		}
 
 		// Tasks section
 		if (stats.tasks.total > 0) {

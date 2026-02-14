@@ -688,3 +688,52 @@
 .theme-dark .clawvault-task-textarea {
 	background-color: var(--background-secondary);
 }
+
+/* Memory Graph section */
+.clawvault-graph-totals {
+  font-size: 0.9em;
+  margin-bottom: 6px;
+}
+
+.clawvault-graph-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 12px;
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.clawvault-graph-type-count {
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.clawvault-graph-type-label {
+  color: var(--text-muted);
+}
+
+/* Observations today */
+.clawvault-obs-today {
+  font-size: 0.9em;
+}
+
+.clawvault-obs-categories {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Kanban board link */
+.clawvault-kanban-link {
+  display: block;
+  padding: 6px 10px;
+  background: var(--background-modifier-hover);
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.clawvault-kanban-link:hover {
+  background: var(--background-modifier-active-hover);
+}

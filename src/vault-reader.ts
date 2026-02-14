@@ -118,6 +118,20 @@ export class VaultReader {
 	}
 
 	/**
+	 * Read a file using the adapter (bypasses Obsidian's dotfile filter)
+	 */
+	private async readFileByAdapter(path: string): Promise<string | null> {
+		try {
+			if (await this.app.vault.adapter.exists(path)) {
+				return await this.app.vault.adapter.read(path);
+			}
+		} catch (error) {
+			console.warn(`ClawVault: Could not read ${path}:`, error);
+		}
+		return null;
+	}
+
+	/**
 	 * Read and parse .clawvault.json
 	 */
 	async readConfig(): Promise<ClawVaultConfig | null> {
@@ -125,16 +139,15 @@ export class VaultReader {
 			return this.cachedConfig;
 		}
 
-		try {
-			const file = this.app.vault.getAbstractFileByPath(CLAWVAULT_CONFIG_FILE);
-			if (file instanceof TFile) {
-				const content = await this.app.vault.read(file);
+		const content = await this.readFileByAdapter(CLAWVAULT_CONFIG_FILE);
+		if (content) {
+			try {
 				this.cachedConfig = JSON.parse(content) as ClawVaultConfig;
 				this.lastCacheTime = Date.now();
 				return this.cachedConfig;
+			} catch (error) {
+				console.warn("ClawVault: Could not parse config:", error);
 			}
-		} catch (error) {
-			console.warn("ClawVault: Could not read config file:", error);
 		}
 		return null;
 	}
@@ -147,18 +160,69 @@ export class VaultReader {
 			return this.cachedGraphIndex;
 		}
 
-		try {
-			const file = this.app.vault.getAbstractFileByPath(CLAWVAULT_GRAPH_INDEX);
-			if (file instanceof TFile) {
-				const content = await this.app.vault.read(file);
+		const content = await this.readFileByAdapter(CLAWVAULT_GRAPH_INDEX);
+		if (content) {
+			try {
 				this.cachedGraphIndex = JSON.parse(content) as GraphIndex;
 				this.lastCacheTime = Date.now();
 				return this.cachedGraphIndex;
+			} catch (error) {
+				console.warn("ClawVault: Could not parse graph index:", error);
 			}
-		} catch (error) {
-			console.warn("ClawVault: Could not read graph index:", error);
 		}
 		return null;
+	}
+
+	/**
+	 * Read today's observation files
+	 */
+	async getTodayObservations(): Promise<{ count: number; categories: string[] }> {
+		const todayStr = new Date().toISOString().split("T")[0] ?? "";
+		if (!todayStr) return { count: 0, categories: [] };
+
+		const categories = new Set<string>();
+		let count = 0;
+		const todayStart = new Date(todayStr).getTime();
+
+		// Check ledger/observations for today's files
+		const ledgerPath = "ledger/observations";
+		try {
+			const folder = this.app.vault.getAbstractFileByPath(ledgerPath);
+			if (folder instanceof TFolder) {
+				for (const child of folder.children) {
+					if (child instanceof TFile && child.basename.startsWith(todayStr)) {
+						count++;
+					}
+				}
+			}
+		} catch { /* no ledger dir */ }
+
+		// Check observations folder for today's files
+		const obsFiles = this.getFilesInFolder("observations");
+		for (const f of obsFiles) {
+			if (f.basename.startsWith(todayStr) || f.stat.mtime >= todayStart) {
+				count++;
+				const parts = f.path.split("/");
+				if (parts.length > 2 && parts[1]) categories.add(parts[1]);
+			}
+		}
+
+		return { count, categories: Array.from(categories) };
+	}
+
+	/**
+	 * Get graph stats summary by node type
+	 */
+	async getGraphTypeSummary(): Promise<Record<string, number>> {
+		const graph = await this.readGraphIndex();
+		if (!graph) return {};
+
+		const typeCounts: Record<string, number> = {};
+		for (const node of graph.nodes) {
+			const type = node.type ?? "unknown";
+			typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+		}
+		return typeCounts;
 	}
 
 	/**
