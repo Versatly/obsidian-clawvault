@@ -228,6 +228,18 @@ export class ClawVaultStatusView extends ItemView {
 						cls: `clawvault-priority-${task.frontmatter.priority}`,
 					});
 				}
+				if (task.frontmatter.estimate) {
+					if (meta.childElementCount > 0) meta.createSpan({ text: " · " });
+					meta.createSpan({ text: `⏱ ${task.frontmatter.estimate}` });
+				}
+				if (task.frontmatter.parent) {
+					if (meta.childElementCount > 0) meta.createSpan({ text: " · " });
+					meta.createSpan({ text: `↑ ${task.frontmatter.parent}` });
+				}
+				if (task.frontmatter.depends_on && task.frontmatter.depends_on.length > 0) {
+					if (meta.childElementCount > 0) meta.createSpan({ text: " · " });
+					meta.createSpan({ text: `⛓ ${task.frontmatter.depends_on.length} dep${task.frontmatter.depends_on.length === 1 ? "" : "s"}` });
+				}
 			}
 		}
 

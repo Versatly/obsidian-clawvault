@@ -128,6 +128,38 @@ export class BlockedModal extends Modal {
 				const dueEl = taskEl.createDiv({ cls: "clawvault-blocked-due" });
 				dueEl.setText(`Due: ${task.frontmatter.due}`);
 			}
+
+			// Parent task
+			if (task.frontmatter.parent) {
+				const parentEl = taskEl.createDiv({ cls: "clawvault-blocked-parent" });
+				parentEl.createSpan({ text: "Parent: " });
+				parentEl.createSpan({
+					text: task.frontmatter.parent,
+					cls: "clawvault-blocked-parent-value",
+				});
+			}
+
+			// Dependencies
+			if (task.frontmatter.depends_on && task.frontmatter.depends_on.length > 0) {
+				const depsEl = taskEl.createDiv({ cls: "clawvault-blocked-depends" });
+				depsEl.createSpan({ text: "Depends on: " });
+				depsEl.createSpan({
+					text: task.frontmatter.depends_on.join(", "),
+					cls: "clawvault-blocked-depends-value",
+				});
+			}
+
+			// Estimate
+			if (task.frontmatter.estimate) {
+				const estEl = taskEl.createDiv({ cls: "clawvault-blocked-estimate" });
+				estEl.setText(`Estimate: ${task.frontmatter.estimate}`);
+			}
+
+			// Description
+			if (task.frontmatter.description) {
+				const descEl = taskEl.createDiv({ cls: "clawvault-blocked-description" });
+				descEl.setText(task.frontmatter.description);
+			}
 		}
 
 		// Close button

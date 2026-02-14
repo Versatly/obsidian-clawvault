@@ -64,6 +64,10 @@ export interface TaskFrontmatter {
 	created?: string;
 	completed?: string | null;
 	source?: string;
+	depends_on?: string[];
+	parent?: string;
+	estimate?: string;
+	description?: string;
 }
 
 export interface ParsedTask {
