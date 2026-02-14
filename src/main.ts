@@ -7,9 +7,15 @@ import { Plugin, WorkspaceLeaf } from "obsidian";
 import { ClawVaultSettings, ClawVaultSettingTab, DEFAULT_SETTINGS } from "./settings";
 import { VaultReader } from "./vault-reader";
 import { ClawVaultStatusView } from "./status-view";
+import { ClawVaultTaskBoardView } from "./task-board-view";
 import { FileDecorations } from "./decorations";
+import { GraphEnhancer } from "./graph-enhancer";
 import { registerCommands } from "./commands";
-import { STATUS_VIEW_TYPE, DEFAULT_CATEGORY_COLORS } from "./constants";
+import {
+	DEFAULT_CATEGORY_COLORS,
+	STATUS_VIEW_TYPE,
+	TASK_BOARD_VIEW_TYPE,
+} from "./constants";
 
 export default class ClawVaultPlugin extends Plugin {
 	settings: ClawVaultSettings = DEFAULT_SETTINGS;
@@ -18,6 +24,7 @@ export default class ClawVaultPlugin extends Plugin {
 	private statusBarItem: HTMLElement | null = null;
 	private refreshIntervalId: number | null = null;
 	private fileDecorations: FileDecorations | null = null;
+	private graphEnhancer: GraphEnhancer | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -28,6 +35,11 @@ export default class ClawVaultPlugin extends Plugin {
 		// Register the status view
 		this.registerView(STATUS_VIEW_TYPE, (leaf: WorkspaceLeaf) => {
 			return new ClawVaultStatusView(leaf, this);
+		});
+
+		// Register the task board view
+		this.registerView(TASK_BOARD_VIEW_TYPE, (leaf: WorkspaceLeaf) => {
+			return new ClawVaultTaskBoardView(leaf, this);
 		});
 
 		// Add ribbon icon
@@ -53,6 +65,10 @@ export default class ClawVaultPlugin extends Plugin {
 		this.fileDecorations = new FileDecorations(this);
 		this.fileDecorations.initialize();
 
+		// Initialize graph enhancements
+		this.graphEnhancer = new GraphEnhancer(this);
+		this.graphEnhancer.initialize();
+
 		// Start refresh interval
 		this.startRefreshInterval();
 
@@ -71,6 +87,12 @@ export default class ClawVaultPlugin extends Plugin {
 		if (this.fileDecorations) {
 			this.fileDecorations.cleanup();
 			this.fileDecorations = null;
+		}
+
+		// Clean up graph enhancements
+		if (this.graphEnhancer) {
+			this.graphEnhancer.cleanup();
+			this.graphEnhancer = null;
 		}
 
 		// Note: Don't detach leaves in onunload per Obsidian guidelines
@@ -106,6 +128,29 @@ export default class ClawVaultPlugin extends Plugin {
 			if (rightLeaf) {
 				await rightLeaf.setViewState({
 					type: STATUS_VIEW_TYPE,
+					active: true,
+				});
+				leaf = rightLeaf;
+			}
+		}
+
+		if (leaf) {
+			await workspace.revealLeaf(leaf);
+		}
+	}
+
+	/**
+	 * Activate the task board view in the right sidebar
+	 */
+	async activateTaskBoardView(): Promise<void> {
+		const { workspace } = this.app;
+		let leaf = workspace.getLeavesOfType(TASK_BOARD_VIEW_TYPE)[0];
+
+		if (!leaf) {
+			const rightLeaf = workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({
+					type: TASK_BOARD_VIEW_TYPE,
 					active: true,
 				});
 				leaf = rightLeaf;
@@ -189,10 +234,22 @@ export default class ClawVaultPlugin extends Plugin {
 			}
 		}
 
+		// Refresh task board if open
+		const boardLeaves = this.app.workspace.getLeavesOfType(TASK_BOARD_VIEW_TYPE);
+		for (const leaf of boardLeaves) {
+			const view = leaf.view;
+			if (view instanceof ClawVaultTaskBoardView) {
+				await view.refresh();
+			}
+		}
+
 		// Update file decorations
 		if (this.fileDecorations) {
 			await this.fileDecorations.decorateAllFiles();
 		}
+
+		// Update graph enhancements
+		this.graphEnhancer?.scheduleEnhance();
 	}
 
 	/**
@@ -200,7 +257,7 @@ export default class ClawVaultPlugin extends Plugin {
 	 * Note: Graph coloring is handled via styles.css with CSS custom properties
 	 */
 	updateGraphStyles(): void {
-		// Graph styles are defined in styles.css using CSS custom properties
-		// This method is kept for potential future dynamic style updates
+		this.graphEnhancer?.applyCategoryVariables();
+		this.graphEnhancer?.scheduleEnhance(40);
 	}
 }

@@ -5,6 +5,7 @@
 
 // View type identifier for the status panel
 export const STATUS_VIEW_TYPE = "clawvault-status-view";
+export const TASK_BOARD_VIEW_TYPE = "clawvault-task-board";
 
 // Default category colors for graph nodes
 export const DEFAULT_CATEGORY_COLORS: Record<string, string> = {
@@ -68,4 +69,17 @@ export const COMMAND_IDS = {
 	ADD_TASK: "clawvault-add-task",
 	VIEW_BLOCKED: "clawvault-view-blocked",
 	OPEN_STATUS_PANEL: "clawvault-open-status-panel",
+	OPEN_TASK_BOARD: "clawvault-open-task-board",
+	GENERATE_CANVAS_FROM_TEMPLATE: "clawvault-generate-canvas-from-template",
+	REFRESH_STATS: "clawvault-refresh-stats",
+	SHOW_OPEN_LOOPS: "clawvault-show-open-loops",
 } as const;
+
+export const CANVAS_TEMPLATE_IDS = {
+	PROJECT_BOARD: "project-board",
+	BRAIN_OVERVIEW: "brain-overview",
+	SPRINT_DASHBOARD: "sprint-dashboard",
+} as const;
+
+export type CanvasTemplateId =
+	typeof CANVAS_TEMPLATE_IDS[keyof typeof CANVAS_TEMPLATE_IDS];

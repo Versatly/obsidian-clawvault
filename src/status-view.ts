@@ -5,8 +5,15 @@
 
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import type ClawVaultPlugin from "./main";
-import { STATUS_VIEW_TYPE } from "./constants";
-import type { VaultStats } from "./vault-reader";
+import { COMMAND_IDS, STATUS_VIEW_TYPE } from "./constants";
+import type { ObservationSession, ParsedTask, VaultStats } from "./vault-reader";
+
+interface StatusViewData {
+	stats: VaultStats;
+	backlogItems: ParsedTask[];
+	recentSessions: ObservationSession[];
+	openLoops: ParsedTask[];
+}
 
 /**
  * Status panel view for the right sidebar
@@ -56,8 +63,18 @@ export class ClawVaultStatusView extends ItemView {
 		this.statusContentEl.empty();
 
 		try {
-			const stats = await this.plugin.vaultReader.getVaultStats();
-			this.renderStats(stats);
+			const [stats, backlogItems, recentSessions, openLoops] = await Promise.all([
+				this.plugin.vaultReader.getVaultStats(),
+				this.plugin.vaultReader.getBacklogTasks(5),
+				this.plugin.vaultReader.getRecentObservationSessions(5),
+				this.plugin.vaultReader.getOpenLoops(7),
+			]);
+			this.renderStats({
+				stats,
+				backlogItems,
+				recentSessions,
+				openLoops,
+			});
 		} catch (error) {
 			this.renderError(error);
 		}
@@ -66,8 +83,9 @@ export class ClawVaultStatusView extends ItemView {
 	/**
 	 * Render vault statistics
 	 */
-	private renderStats(stats: VaultStats): void {
+	private renderStats(data: StatusViewData): void {
 		if (!this.statusContentEl) return;
+		const { stats, backlogItems, recentSessions, openLoops } = data;
 
 		// Header
 		const header = this.statusContentEl.createDiv({ cls: "clawvault-status-header" });
@@ -115,6 +133,44 @@ export class ClawVaultStatusView extends ItemView {
 			progressFill.style.width = `${completedPct}%`;
 		}
 
+		// Backlog section
+		const backlogSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
+		backlogSection.createEl("h4", {
+			text: `Backlog (${stats.tasks.open})`,
+		});
+
+		if (backlogItems.length === 0) {
+			backlogSection.createDiv({
+				text: "No backlog tasks",
+				cls: "clawvault-empty-hint",
+			});
+		} else {
+			const backlogList = backlogSection.createDiv({ cls: "clawvault-status-list" });
+			for (const task of backlogItems) {
+				const item = backlogList.createDiv({ cls: "clawvault-status-list-item" });
+				const link = item.createEl("a", {
+					text: task.frontmatter.title ?? task.file.basename,
+					cls: "clawvault-blocked-link",
+				});
+				link.addEventListener("click", (event) => {
+					event.preventDefault();
+					void this.app.workspace.openLinkText(task.file.path, "", "tab");
+				});
+
+				const meta = item.createDiv({ cls: "clawvault-status-list-meta" });
+				if (task.frontmatter.project) {
+					meta.createSpan({ text: task.frontmatter.project });
+				}
+				if (task.frontmatter.priority) {
+					if (meta.childElementCount > 0) meta.createSpan({ text: " · " });
+					meta.createSpan({
+						text: `${task.frontmatter.priority}`,
+						cls: `clawvault-priority-${task.frontmatter.priority}`,
+					});
+				}
+			}
+		}
+
 		// Inbox section
 		if (stats.inboxCount > 0) {
 			const inboxSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
@@ -138,6 +194,89 @@ export class ClawVaultStatusView extends ItemView {
 				text: `Last reflection: ${stats.lastReflection}`,
 			});
 		}
+
+		// Recent observation sessions
+		const recentActivitySection = this.statusContentEl.createDiv({
+			cls: "clawvault-status-section",
+		});
+		recentActivitySection.createEl("h4", { text: "Recent activity" });
+		if (recentSessions.length === 0) {
+			recentActivitySection.createDiv({
+				text: "No observed sessions found.",
+				cls: "clawvault-empty-hint",
+			});
+		} else {
+			const sessionsList = recentActivitySection.createDiv({ cls: "clawvault-status-list" });
+			for (const session of recentSessions) {
+				const row = sessionsList.createDiv({ cls: "clawvault-status-list-item" });
+				const link = row.createEl("a", {
+					text: session.file.basename,
+					cls: "clawvault-blocked-link",
+				});
+				link.addEventListener("click", (event) => {
+					event.preventDefault();
+					void this.app.workspace.openLinkText(session.file.path, "", "tab");
+				});
+				row.createDiv({
+					text: session.timestamp.toLocaleString(),
+					cls: "clawvault-status-list-meta",
+				});
+			}
+		}
+
+		// Open loops section
+		const openLoopsSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
+		openLoopsSection.createEl("h4", {
+			text: `Open loops (${openLoops.length})`,
+		});
+
+		if (openLoops.length === 0) {
+			openLoopsSection.createDiv({
+				text: "No open loops older than 7 days.",
+				cls: "clawvault-empty-hint",
+			});
+		} else {
+			const loopList = openLoopsSection.createDiv({ cls: "clawvault-status-list" });
+			for (const task of openLoops.slice(0, 5)) {
+				const row = loopList.createDiv({
+					cls: "clawvault-status-list-item clawvault-open-loop-warning",
+				});
+				const ageDays = this.getAgeInDays(task.createdAt ?? new Date(task.file.stat.ctime));
+				const link = row.createEl("a", {
+					text: task.frontmatter.title ?? task.file.basename,
+					cls: "clawvault-blocked-link",
+				});
+				link.addEventListener("click", (event) => {
+					event.preventDefault();
+					void this.app.workspace.openLinkText(task.file.path, "", "tab");
+				});
+				row.createDiv({
+					text: `${ageDays}d open`,
+					cls: "clawvault-status-list-meta",
+				});
+			}
+		}
+
+		const quickActionsSection = this.statusContentEl.createDiv({
+			cls: "clawvault-status-section clawvault-status-quick-actions",
+		});
+		quickActionsSection.createEl("h4", { text: "Quick actions" });
+		const actionsRow = quickActionsSection.createDiv({ cls: "clawvault-quick-action-row" });
+		this.renderQuickActionButton(
+			actionsRow,
+			"Add Task",
+			COMMAND_IDS.ADD_TASK
+		);
+		this.renderQuickActionButton(
+			actionsRow,
+			"Quick Capture",
+			COMMAND_IDS.QUICK_CAPTURE
+		);
+		this.renderQuickActionButton(
+			actionsRow,
+			"Generate Dashboard",
+			COMMAND_IDS.GENERATE_DASHBOARD
+		);
 
 		// Refresh button
 		const footer = this.statusContentEl.createDiv({ cls: "clawvault-status-footer" });
@@ -198,5 +337,24 @@ export class ClawVaultStatusView extends ItemView {
 		if (diffHours < 24) return `${diffHours}h ago`;
 		if (diffDays < 7) return `${diffDays}d ago`;
 		return date.toLocaleDateString();
+	}
+
+	private getAgeInDays(date: Date): number {
+		const diffMs = Date.now() - date.getTime();
+		return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+	}
+
+	private renderQuickActionButton(
+		parent: HTMLElement,
+		label: string,
+		commandId: string
+	): void {
+		const button = parent.createEl("button", {
+			text: label,
+			cls: "clawvault-quick-action-btn",
+		});
+		button.addEventListener("click", () => {
+			void this.app.commands.executeCommandById(commandId);
+		});
 	}
 }

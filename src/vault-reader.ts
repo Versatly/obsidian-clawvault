@@ -8,6 +8,7 @@ import {
 	CLAWVAULT_CONFIG_FILE,
 	CLAWVAULT_GRAPH_INDEX,
 	DEFAULT_FOLDERS,
+	TaskPriority,
 	TaskStatus,
 	TASK_STATUS,
 } from "./constants";
@@ -43,12 +44,28 @@ export interface ClawVaultConfig {
 // Task frontmatter structure
 export interface TaskFrontmatter {
 	status?: TaskStatus;
-	priority?: string;
+	priority?: TaskPriority | string;
 	project?: string;
 	owner?: string;
 	blocked_by?: string | string[];
 	due?: string;
 	title?: string;
+	tags?: string[] | string;
+	created?: string;
+	completed?: string | null;
+	source?: string;
+}
+
+export interface ParsedTask {
+	file: TFile;
+	frontmatter: TaskFrontmatter;
+	status: TaskStatus;
+	createdAt: Date | null;
+}
+
+export interface ObservationSession {
+	file: TFile;
+	timestamp: Date;
 }
 
 // Vault statistics
@@ -185,6 +202,46 @@ export class VaultReader {
 	}
 
 	/**
+	 * Parse a frontmatter date field into a Date value
+	 */
+	private parseDate(value: unknown): Date | null {
+		if (value instanceof Date) {
+			return Number.isNaN(value.getTime()) ? null : value;
+		}
+		if (typeof value === "number") {
+			const date = new Date(value);
+			return Number.isNaN(date.getTime()) ? null : date;
+		}
+		if (typeof value === "string" && value.trim().length > 0) {
+			const date = new Date(value);
+			return Number.isNaN(date.getTime()) ? null : date;
+		}
+		return null;
+	}
+
+	/**
+	 * Get all tasks from the tasks folder
+	 */
+	async getAllTasks(): Promise<ParsedTask[]> {
+		const taskFiles = this.getFilesInFolder(DEFAULT_FOLDERS.TASKS);
+		const tasks: ParsedTask[] = [];
+
+		for (const file of taskFiles) {
+			const frontmatter = (await this.parseFrontmatter(file)) ?? {};
+			const status = frontmatter.status ?? TASK_STATUS.OPEN;
+			const createdAt = this.parseDate(frontmatter.created) ?? new Date(file.stat.ctime);
+			tasks.push({
+				file,
+				frontmatter,
+				status,
+				createdAt,
+			});
+		}
+
+		return tasks;
+	}
+
+	/**
 	 * Get task statistics from task files
 	 */
 	async getTaskStats(): Promise<VaultStats["tasks"]> {
@@ -196,30 +253,24 @@ export class VaultReader {
 			total: 0,
 		};
 
-		const taskFiles = this.getFilesInFolder(DEFAULT_FOLDERS.TASKS);
-		
-		for (const file of taskFiles) {
-			const frontmatter = await this.parseFrontmatter(file);
+		const tasks = await this.getAllTasks();
+
+		for (const task of tasks) {
 			stats.total++;
-			
-			if (frontmatter?.status) {
-				switch (frontmatter.status) {
-					case TASK_STATUS.IN_PROGRESS:
-						stats.active++;
-						break;
-					case TASK_STATUS.OPEN:
-						stats.open++;
-						break;
-					case TASK_STATUS.BLOCKED:
-						stats.blocked++;
-						break;
-					case TASK_STATUS.DONE:
-						stats.completed++;
-						break;
-				}
-			} else {
-				// Default to open if no status
-				stats.open++;
+
+			switch (task.status) {
+				case TASK_STATUS.IN_PROGRESS:
+					stats.active++;
+					break;
+				case TASK_STATUS.OPEN:
+					stats.open++;
+					break;
+				case TASK_STATUS.BLOCKED:
+					stats.blocked++;
+					break;
+				case TASK_STATUS.DONE:
+					stats.completed++;
+					break;
 			}
 		}
 
@@ -231,16 +282,71 @@ export class VaultReader {
 	 */
 	async getBlockedTasks(): Promise<Array<{ file: TFile; frontmatter: TaskFrontmatter }>> {
 		const blockedTasks: Array<{ file: TFile; frontmatter: TaskFrontmatter }> = [];
-		const taskFiles = this.getFilesInFolder(DEFAULT_FOLDERS.TASKS);
 
-		for (const file of taskFiles) {
-			const frontmatter = await this.parseFrontmatter(file);
-			if (frontmatter?.status === TASK_STATUS.BLOCKED) {
-				blockedTasks.push({ file, frontmatter });
+		for (const task of await this.getAllTasks()) {
+			if (task.status === TASK_STATUS.BLOCKED) {
+				blockedTasks.push({ file: task.file, frontmatter: task.frontmatter });
 			}
 		}
 
 		return blockedTasks;
+	}
+
+	/**
+	 * Get backlog tasks (open status), newest first
+	 */
+	async getBacklogTasks(limit = 5): Promise<ParsedTask[]> {
+		const openTasks = (await this.getAllTasks())
+			.filter((task) => task.status === TASK_STATUS.OPEN)
+			.sort((a, b) => b.file.stat.mtime - a.file.stat.mtime);
+
+		return openTasks.slice(0, limit);
+	}
+
+	/**
+	 * Get open loops: non-completed tasks older than a threshold
+	 */
+	async getOpenLoops(daysOpen = 7): Promise<ParsedTask[]> {
+		const ageThreshold = Date.now() - daysOpen * 24 * 60 * 60 * 1000;
+		const tasks = await this.getAllTasks();
+		return tasks
+			.filter((task) => {
+				if (task.status === TASK_STATUS.DONE) {
+					return false;
+				}
+				const createdAt = task.createdAt ?? new Date(task.file.stat.ctime);
+				return createdAt.getTime() < ageThreshold;
+			})
+			.sort((a, b) => {
+				const aTime = a.createdAt?.getTime() ?? a.file.stat.ctime;
+				const bTime = b.createdAt?.getTime() ?? b.file.stat.ctime;
+				return aTime - bTime;
+			});
+	}
+
+	/**
+	 * Get recent observation sessions by file modified time
+	 */
+	async getRecentObservationSessions(limit = 5): Promise<ObservationSession[]> {
+		const observationFiles = this.getFilesInFolder("observations")
+			.sort((a, b) => b.stat.mtime - a.stat.mtime)
+			.slice(0, limit);
+
+		return observationFiles.map((file) => ({
+			file,
+			timestamp: new Date(file.stat.mtime),
+		}));
+	}
+
+	/**
+	 * Get recent decisions updated within a date window
+	 */
+	getRecentDecisionFiles(days = 7, limit = 10): TFile[] {
+		const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+		return this.getFilesInFolder("decisions")
+			.filter((file) => file.stat.mtime >= cutoff)
+			.sort((a, b) => b.stat.mtime - a.stat.mtime)
+			.slice(0, limit);
 	}
 
 	/**
