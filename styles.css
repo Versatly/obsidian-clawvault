@@ -1,8 +1,467 @@
-/*
+/**
+ * ClawVault Plugin Styles
+ * Graph coloring, sidebar panel, modals, and file decorations
+ */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* ==========================================================================
+   CSS Custom Properties (Colors)
+   ========================================================================== */
 
-If your plugin does not need CSS, delete this file.
+:root {
+	--clawvault-color-tasks: #e8a430;
+	--clawvault-color-decisions: #e85d4a;
+	--clawvault-color-people: #4a90e8;
+	--clawvault-color-projects: #4ae85d;
+	--clawvault-color-lessons: #9b59b6;
+	--clawvault-color-blocked: #e74c3c;
+	--clawvault-color-backlog: #95a5a6;
+	--clawvault-color-inbox: #f39c12;
+	--clawvault-color-default: #7f8c8d;
+}
 
-*/
+/* ==========================================================================
+   Status Bar
+   ========================================================================== */
+
+.clawvault-status-bar {
+	cursor: pointer;
+	padding: 0 8px;
+	border-radius: 4px;
+	transition: background-color 0.15s ease;
+}
+
+.clawvault-status-bar:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* ==========================================================================
+   Status View (Sidebar Panel)
+   ========================================================================== */
+
+.clawvault-status-view {
+	padding: 16px;
+}
+
+.clawvault-status-content {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.clawvault-status-header h3 {
+	margin: 0 0 8px 0;
+	font-size: 1.2em;
+	font-weight: 600;
+}
+
+.clawvault-status-header hr {
+	border: none;
+	border-top: 1px solid var(--background-modifier-border);
+	margin: 0;
+}
+
+.clawvault-status-section {
+	padding: 8px 0;
+}
+
+.clawvault-status-section h4 {
+	margin: 0 0 8px 0;
+	font-size: 0.95em;
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.clawvault-status-vault-name {
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.clawvault-status-counts {
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
+/* Task Stats */
+.clawvault-task-stats {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.clawvault-task-status-line {
+	font-size: 0.9em;
+}
+
+.clawvault-task-active {
+	color: var(--clawvault-color-tasks);
+}
+
+.clawvault-task-open {
+	color: var(--text-muted);
+}
+
+.clawvault-task-blocked {
+	color: var(--clawvault-color-blocked);
+}
+
+.clawvault-task-completed {
+	font-size: 0.9em;
+	color: var(--clawvault-color-projects);
+}
+
+/* Progress Bar */
+.clawvault-progress-bar {
+	height: 6px;
+	background-color: var(--background-modifier-border);
+	border-radius: 3px;
+	overflow: hidden;
+	margin-top: 4px;
+}
+
+.clawvault-progress-fill {
+	height: 100%;
+	background-color: var(--clawvault-color-projects);
+	border-radius: 3px;
+	transition: width 0.3s ease;
+}
+
+/* Inbox Count */
+.clawvault-inbox-count {
+	font-size: 0.9em;
+	padding: 8px 12px;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+	border-left: 3px solid var(--clawvault-color-inbox);
+}
+
+/* Activity Section */
+.clawvault-activity {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.clawvault-activity > div {
+	margin-bottom: 4px;
+}
+
+/* Footer */
+.clawvault-status-footer {
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.clawvault-refresh-btn {
+	width: 100%;
+}
+
+/* Error State */
+.clawvault-status-error {
+	text-align: center;
+	padding: 20px;
+}
+
+.clawvault-error-message {
+	color: var(--text-muted);
+}
+
+.clawvault-error-details {
+	font-size: 0.85em;
+	color: var(--text-error);
+	font-family: var(--font-monospace);
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.clawvault-capture-modal,
+.clawvault-task-modal,
+.clawvault-blocked-modal {
+	max-width: 500px;
+}
+
+.clawvault-capture-modal h2,
+.clawvault-task-modal h2,
+.clawvault-blocked-modal h2 {
+	margin-top: 0;
+	margin-bottom: 16px;
+}
+
+/* Textareas */
+.clawvault-capture-textarea,
+.clawvault-task-textarea {
+	width: 100%;
+	min-height: 100px;
+	padding: 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-family: inherit;
+	font-size: inherit;
+	resize: vertical;
+}
+
+.clawvault-capture-textarea:focus,
+.clawvault-task-textarea:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Modal Buttons */
+.clawvault-modal-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* ==========================================================================
+   Blocked Tasks Modal
+   ========================================================================== */
+
+.clawvault-blocked-summary {
+	font-size: 0.9em;
+	color: var(--text-muted);
+	margin-bottom: 16px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.clawvault-blocked-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.clawvault-blocked-item {
+	padding: 12px;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+	border-left: 3px solid var(--clawvault-color-blocked);
+}
+
+.clawvault-blocked-title {
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.clawvault-blocked-link {
+	color: var(--text-normal);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.clawvault-blocked-link:hover {
+	color: var(--text-accent);
+	text-decoration: underline;
+}
+
+.clawvault-blocked-meta {
+	display: flex;
+	gap: 12px;
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-bottom: 4px;
+}
+
+.clawvault-blocked-by {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-top: 6px;
+}
+
+.clawvault-blocked-by-value {
+	color: var(--clawvault-color-blocked);
+}
+
+.clawvault-blocked-due {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+
+/* Priority Colors */
+.clawvault-priority-critical {
+	color: var(--clawvault-color-blocked) !important;
+	font-weight: 600;
+}
+
+.clawvault-priority-high {
+	color: var(--clawvault-color-decisions) !important;
+}
+
+.clawvault-priority-medium {
+	color: var(--clawvault-color-tasks) !important;
+}
+
+.clawvault-priority-low {
+	color: var(--text-muted) !important;
+}
+
+/* Empty State */
+.clawvault-empty-state {
+	text-align: center;
+	padding: 40px 20px;
+	color: var(--text-muted);
+}
+
+.clawvault-empty-hint {
+	font-size: 0.85em;
+	margin-top: 8px;
+}
+
+/* Loading State */
+.clawvault-loading {
+	text-align: center;
+	padding: 20px;
+	color: var(--text-muted);
+}
+
+/* ==========================================================================
+   File Explorer Decorations
+   ========================================================================== */
+
+.clawvault-decoration {
+	margin-right: 4px;
+	font-size: 0.9em;
+	opacity: 0.9;
+}
+
+/* Task status colors in file explorer */
+.nav-file-title .clawvault-decoration {
+	display: inline-block;
+	min-width: 1em;
+	text-align: center;
+}
+
+/* ==========================================================================
+   Graph View Styling
+   ========================================================================== */
+
+/* Category-based node coloring */
+.graph-view .node[data-category="tasks"] circle {
+	fill: var(--clawvault-color-tasks) !important;
+}
+
+.graph-view .node[data-category="decisions"] circle {
+	fill: var(--clawvault-color-decisions) !important;
+}
+
+.graph-view .node[data-category="people"] circle {
+	fill: var(--clawvault-color-people) !important;
+}
+
+.graph-view .node[data-category="projects"] circle {
+	fill: var(--clawvault-color-projects) !important;
+}
+
+.graph-view .node[data-category="lessons"] circle {
+	fill: var(--clawvault-color-lessons) !important;
+}
+
+.graph-view .node[data-category="blocked"] circle {
+	fill: var(--clawvault-color-blocked) !important;
+}
+
+.graph-view .node[data-category="backlog"] circle {
+	fill: var(--clawvault-color-backlog) !important;
+}
+
+.graph-view .node[data-category="inbox"] circle {
+	fill: var(--clawvault-color-inbox) !important;
+}
+
+/* Folder-based coloring (using path patterns) */
+.graph-view .node[data-path^="tasks/"] circle {
+	fill: var(--clawvault-color-tasks) !important;
+}
+
+.graph-view .node[data-path^="decisions/"] circle {
+	fill: var(--clawvault-color-decisions) !important;
+}
+
+.graph-view .node[data-path^="people/"] circle {
+	fill: var(--clawvault-color-people) !important;
+}
+
+.graph-view .node[data-path^="projects/"] circle {
+	fill: var(--clawvault-color-projects) !important;
+}
+
+.graph-view .node[data-path^="lessons/"] circle {
+	fill: var(--clawvault-color-lessons) !important;
+}
+
+.graph-view .node[data-path^="backlog/"] circle {
+	fill: var(--clawvault-color-backlog) !important;
+}
+
+.graph-view .node[data-path^="inbox/"] circle {
+	fill: var(--clawvault-color-inbox) !important;
+}
+
+/* Graph link styling */
+.graph-view .links line {
+	stroke: var(--background-modifier-border);
+	stroke-opacity: 0.6;
+}
+
+.graph-view .links line:hover {
+	stroke-opacity: 1;
+}
+
+/* ==========================================================================
+   Settings Tab
+   ========================================================================== */
+
+.clawvault-settings .setting-item-description {
+	color: var(--text-muted);
+}
+
+/* Color picker alignment */
+.clawvault-settings .setting-item-control {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 600px) {
+	.clawvault-status-view {
+		padding: 12px;
+	}
+
+	.clawvault-blocked-list {
+		max-height: 300px;
+	}
+
+	.clawvault-modal-buttons {
+		flex-direction: column;
+	}
+
+	.clawvault-modal-buttons button {
+		width: 100%;
+	}
+}
+
+/* ==========================================================================
+   Dark Theme Adjustments
+   ========================================================================== */
+
+.theme-dark .clawvault-blocked-item {
+	background-color: var(--background-secondary-alt);
+}
+
+.theme-dark .clawvault-capture-textarea,
+.theme-dark .clawvault-task-textarea {
+	background-color: var(--background-secondary);
+}
