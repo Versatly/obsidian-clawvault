@@ -25,7 +25,7 @@ export class ClawVaultStatusView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "ClawVault Status";
+		return "ClawVault status";
 	}
 
 	getIcon(): string {
@@ -129,13 +129,13 @@ export class ClawVaultStatusView extends ItemView {
 		
 		if (stats.lastObservation) {
 			activitySection.createDiv({
-				text: `Last Observation: ${this.formatTimeAgo(stats.lastObservation)}`,
+				text: `Last observation: ${this.formatTimeAgo(stats.lastObservation)}`,
 			});
 		}
 		
 		if (stats.lastReflection) {
 			activitySection.createDiv({
-				text: `Last Reflection: ${stats.lastReflection}`,
+				text: `Last reflection: ${stats.lastReflection}`,
 			});
 		}
 
@@ -145,7 +145,9 @@ export class ClawVaultStatusView extends ItemView {
 			text: "Refresh",
 			cls: "clawvault-refresh-btn",
 		});
-		refreshBtn.addEventListener("click", () => this.refresh());
+		refreshBtn.addEventListener("click", () => {
+			void this.refresh();
+		});
 	}
 
 	/**
@@ -169,7 +171,9 @@ export class ClawVaultStatusView extends ItemView {
 			text: "Retry",
 			cls: "clawvault-refresh-btn",
 		});
-		refreshBtn.addEventListener("click", () => this.refresh());
+		refreshBtn.addEventListener("click", () => {
+			void this.refresh();
+		});
 	}
 
 	/**

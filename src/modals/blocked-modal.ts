@@ -26,7 +26,7 @@ export class BlockedModal extends Modal {
 		const { contentEl } = this;
 		contentEl.addClass("clawvault-blocked-modal");
 
-		contentEl.createEl("h2", { text: "⊘ Blocked Tasks" });
+		contentEl.createEl("h2", { text: "⊘ Blocked tasks" });
 
 		// Show loading state
 		const loadingEl = contentEl.createDiv({ cls: "clawvault-loading" });
@@ -88,7 +88,7 @@ export class BlockedModal extends Modal {
 			titleLink.addEventListener("click", (e) => {
 				e.preventDefault();
 				this.close();
-				this.app.workspace.openLinkText(task.file.path, "", true);
+				void this.app.workspace.openLinkText(task.file.path, "", true);
 			});
 
 			// Task metadata

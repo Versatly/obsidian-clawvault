@@ -18,7 +18,6 @@ export default class ClawVaultPlugin extends Plugin {
 	private statusBarItem: HTMLElement | null = null;
 	private refreshIntervalId: number | null = null;
 	private fileDecorations: FileDecorations | null = null;
-	private styleEl: HTMLStyleElement | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -32,15 +31,15 @@ export default class ClawVaultPlugin extends Plugin {
 		});
 
 		// Add ribbon icon
-		this.addRibbonIcon("database", "ClawVault Status", () => {
-			this.activateStatusView();
+		this.addRibbonIcon("database", "ClawVault status", () => {
+			void this.activateStatusView();
 		});
 
 		// Add status bar item
 		this.statusBarItem = this.addStatusBarItem();
 		this.statusBarItem.addClass("clawvault-status-bar");
 		this.statusBarItem.addEventListener("click", () => {
-			this.activateStatusView();
+			void this.activateStatusView();
 		});
 		this.updateStatusBarVisibility();
 
@@ -54,16 +53,11 @@ export default class ClawVaultPlugin extends Plugin {
 		this.fileDecorations = new FileDecorations(this);
 		this.fileDecorations.initialize();
 
-		// Inject graph styles
-		this.injectGraphStyles();
-
 		// Start refresh interval
 		this.startRefreshInterval();
 
 		// Initial status bar update
-		this.updateStatusBar();
-
-		console.log("ClawVault plugin loaded");
+		void this.updateStatusBar();
 	}
 
 	onunload(): void {
@@ -79,21 +73,13 @@ export default class ClawVaultPlugin extends Plugin {
 			this.fileDecorations = null;
 		}
 
-		// Clean up injected styles
-		if (this.styleEl) {
-			this.styleEl.remove();
-			this.styleEl = null;
-		}
-
-		// Detach all status views
-		this.app.workspace.detachLeavesOfType(STATUS_VIEW_TYPE);
-
-		console.log("ClawVault plugin unloaded");
+		// Note: Don't detach leaves in onunload per Obsidian guidelines
+		// The view will be properly cleaned up by Obsidian
 	}
 
 	async loadSettings(): Promise<void> {
-		const data = await this.loadData();
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, data as Partial<ClawVaultSettings>);
+		const data = await this.loadData() as Partial<ClawVaultSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
 		
 		// Merge category colors with defaults
 		this.settings.categoryColors = Object.assign(
@@ -127,7 +113,7 @@ export default class ClawVaultPlugin extends Plugin {
 		}
 
 		if (leaf) {
-			workspace.revealLeaf(leaf);
+			await workspace.revealLeaf(leaf);
 		}
 	}
 
@@ -156,7 +142,7 @@ export default class ClawVaultPlugin extends Plugin {
 			this.statusBarItem.setText(
 				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${activeTaskCount} tasks`
 			);
-		} catch (error) {
+		} catch {
 			this.statusBarItem.setText("🐘 ClawVault");
 		}
 	}
@@ -170,7 +156,7 @@ export default class ClawVaultPlugin extends Plugin {
 		}
 
 		this.refreshIntervalId = window.setInterval(() => {
-			this.refreshAll();
+			void this.refreshAll();
 		}, this.settings.refreshInterval);
 
 		// Register for cleanup
@@ -210,60 +196,11 @@ export default class ClawVaultPlugin extends Plugin {
 	}
 
 	/**
-	 * Inject CSS styles for graph coloring
-	 */
-	injectGraphStyles(): void {
-		// Remove existing style element
-		if (this.styleEl) {
-			this.styleEl.remove();
-		}
-
-		// Create new style element
-		this.styleEl = document.createElement("style");
-		this.styleEl.id = "clawvault-graph-styles";
-		this.updateGraphStyleContent();
-		document.head.appendChild(this.styleEl);
-	}
-
-	/**
-	 * Update the graph style content
-	 */
-	private updateGraphStyleContent(): void {
-		if (!this.styleEl) return;
-
-		const colors = this.settings.categoryColors;
-		const cssRules: string[] = [];
-
-		// Generate CSS custom properties for each category
-		cssRules.push(`:root {`);
-		for (const [category, color] of Object.entries(colors)) {
-			cssRules.push(`  --clawvault-color-${category}: ${color};`);
-		}
-		cssRules.push(`}`);
-
-		// Graph node styling based on data attributes
-		// Note: Obsidian's graph doesn't natively support folder-based coloring,
-		// but we can use CSS classes that could be added via other means
-		for (const [category, color] of Object.entries(colors)) {
-			cssRules.push(`
-.graph-view.color-fill-${category} .node circle,
-.graph-view .node.${category} circle {
-  fill: ${color} !important;
-}
-
-.graph-view.color-fill-${category} .node text,
-.graph-view .node.${category} text {
-  fill: ${color} !important;
-}`);
-		}
-
-		this.styleEl.textContent = cssRules.join("\n");
-	}
-
-	/**
 	 * Update graph styles (called when settings change)
+	 * Note: Graph coloring is handled via styles.css with CSS custom properties
 	 */
 	updateGraphStyles(): void {
-		this.updateGraphStyleContent();
+		// Graph styles are defined in styles.css using CSS custom properties
+		// This method is kept for potential future dynamic style updates
 	}
 }

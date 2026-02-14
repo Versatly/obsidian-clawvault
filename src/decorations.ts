@@ -27,13 +27,13 @@ export class FileDecorations {
 		this.setupObserver();
 		
 		// Initial decoration pass
-		this.decorateAllFiles();
+		void this.decorateAllFiles();
 
 		// Re-decorate when files change
 		this.plugin.registerEvent(
 			this.plugin.app.vault.on("modify", (file) => {
 				if (file instanceof TFile) {
-					this.decorateFile(file);
+					void this.decorateFile(file);
 				}
 			})
 		);
@@ -41,7 +41,9 @@ export class FileDecorations {
 		this.plugin.registerEvent(
 			this.plugin.app.vault.on("create", (file) => {
 				if (file instanceof TFile) {
-					setTimeout(() => this.decorateFile(file), 100);
+					setTimeout(() => {
+						void this.decorateFile(file);
+					}, 100);
 				}
 			})
 		);
@@ -51,7 +53,9 @@ export class FileDecorations {
 				// Clear old decoration
 				this.decorationCache.delete(oldPath);
 				if (file instanceof TFile) {
-					setTimeout(() => this.decorateFile(file), 100);
+					setTimeout(() => {
+						void this.decorateFile(file);
+					}, 100);
 				}
 			})
 		);
@@ -83,7 +87,9 @@ export class FileDecorations {
 			}
 			if (shouldRedecorate) {
 				// Debounce redecorations
-				setTimeout(() => this.decorateAllFiles(), 50);
+				setTimeout(() => {
+					void this.decorateAllFiles();
+				}, 50);
 			}
 		});
 
@@ -138,7 +144,7 @@ export class FileDecorations {
 		if (this.isInFolder(file, DEFAULT_FOLDERS.TASKS)) {
 			const status = await this.plugin.vaultReader.getTaskStatus(file);
 			if (status) {
-				return STATUS_ICONS[status as TaskStatus] ?? STATUS_ICONS[TASK_STATUS.OPEN];
+				return STATUS_ICONS[status] ?? STATUS_ICONS[TASK_STATUS.OPEN];
 			}
 		}
 

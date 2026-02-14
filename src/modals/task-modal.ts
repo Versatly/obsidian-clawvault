@@ -23,7 +23,7 @@ export class TaskModal extends Modal {
 		const { contentEl } = this;
 		contentEl.addClass("clawvault-task-modal");
 
-		contentEl.createEl("h2", { text: "Add Task" });
+		contentEl.createEl("h2", { text: "Add task" });
 
 		// Title input (required)
 		new Setting(contentEl)
@@ -89,16 +89,18 @@ export class TaskModal extends Modal {
 		cancelBtn.addEventListener("click", () => this.close());
 
 		const saveBtn = buttonContainer.createEl("button", {
-			text: "Create Task",
+			text: "Create task",
 			cls: "mod-cta",
 		});
-		saveBtn.addEventListener("click", () => this.save());
+		saveBtn.addEventListener("click", () => {
+			void this.save();
+		});
 
 		// Handle Enter key (Ctrl/Cmd + Enter to save)
 		contentEl.addEventListener("keydown", (e) => {
 			if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
 				e.preventDefault();
-				this.save();
+				void this.save();
 			}
 			if (e.key === "Escape") {
 				this.close();

@@ -16,7 +16,9 @@ export function registerCommands(plugin: ClawVaultPlugin): void {
 	plugin.addCommand({
 		id: COMMAND_IDS.GENERATE_DASHBOARD,
 		name: "Generate dashboard",
-		callback: () => generateDashboard(plugin),
+		callback: () => {
+			void generateDashboard(plugin);
+		},
 	});
 
 	// Quick Capture command
@@ -50,7 +52,9 @@ export function registerCommands(plugin: ClawVaultPlugin): void {
 	plugin.addCommand({
 		id: COMMAND_IDS.OPEN_STATUS_PANEL,
 		name: "Open status panel",
-		callback: () => activateStatusView(plugin),
+		callback: () => {
+			void activateStatusView(plugin);
+		},
 	});
 }
 
@@ -67,10 +71,10 @@ async function generateDashboard(plugin: ClawVaultPlugin): Promise<void> {
 	new Notice("Generating dashboard...");
 
 	try {
-		// Use child_process to run clawvault canvas
-		const { exec } = await import("child_process");
-		const { promisify } = await import("util");
-		const execAsync = promisify(exec);
+		// Dynamic import for Node.js modules (desktop only)
+		const childProcess = await import("child_process");
+		const util = await import("util");
+		const execAsync = util.promisify(childProcess.exec);
 
 		// Get vault path
 		const vaultPath = plugin.settings.vaultPathOverride || 
@@ -142,6 +146,6 @@ async function activateStatusView(plugin: ClawVaultPlugin): Promise<void> {
 
 	// Reveal the leaf
 	if (leaf) {
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 }

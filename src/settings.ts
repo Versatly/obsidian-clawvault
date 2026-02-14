@@ -54,10 +54,10 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		// Header
-		containerEl.createEl("h2", { text: "ClawVault Settings" });
+		new Setting(containerEl).setName("ClawVault settings").setHeading();
 
 		// General section
-		containerEl.createEl("h3", { text: "General" });
+		new Setting(containerEl).setName("General").setHeading();
 
 		new Setting(containerEl)
 			.setName("Vault path override")
@@ -88,7 +88,7 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 			);
 
 		// Display section
-		containerEl.createEl("h3", { text: "Display" });
+		new Setting(containerEl).setName("Display").setHeading();
 
 		new Setting(containerEl)
 			.setName("Show status bar")
@@ -116,7 +116,8 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 			);
 
 		// Graph colors section
-		containerEl.createEl("h3", { text: "Graph colors" });
+		new Setting(containerEl).setName("Graph colors").setHeading();
+		
 		containerEl.createEl("p", {
 			text: "Customize colors for different categories in the graph view.",
 			cls: "setting-item-description",
@@ -170,7 +171,8 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 			);
 
 		// About section
-		containerEl.createEl("h3", { text: "About" });
+		new Setting(containerEl).setName("About").setHeading();
+		
 		containerEl.createEl("p", {
 			text: "ClawVault is a visual memory management plugin for Obsidian. It provides colored graph nodes, task tracking, and vault statistics.",
 		});
