@@ -11,6 +11,7 @@ import type { ObservationSession, ParsedTask, VaultStats } from "./vault-reader"
 interface StatusViewData {
 	stats: VaultStats;
 	backlogItems: ParsedTask[];
+	overdueItems: ParsedTask[];
 	recentSessions: ObservationSession[];
 	openLoops: ParsedTask[];
 	graphTypes: Record<string, number>;
@@ -65,9 +66,10 @@ export class ClawVaultStatusView extends ItemView {
 		this.statusContentEl.empty();
 
 		try {
-			const [stats, backlogItems, recentSessions, openLoops, graphTypes, todayObs] = await Promise.all([
+			const [stats, backlogItems, overdueItems, recentSessions, openLoops, graphTypes, todayObs] = await Promise.all([
 				this.plugin.vaultReader.getVaultStats(),
 				this.plugin.vaultReader.getBacklogTasks(5),
+				this.plugin.vaultReader.getOverdueTasks(),
 				this.plugin.vaultReader.getRecentObservationSessions(5),
 				this.plugin.vaultReader.getOpenLoops(7),
 				this.plugin.vaultReader.getGraphTypeSummary(),
@@ -76,6 +78,7 @@ export class ClawVaultStatusView extends ItemView {
 			this.renderStats({
 				stats,
 				backlogItems,
+				overdueItems,
 				recentSessions,
 				openLoops,
 				graphTypes,
@@ -91,7 +94,7 @@ export class ClawVaultStatusView extends ItemView {
 	 */
 	private renderStats(data: StatusViewData): void {
 		if (!this.statusContentEl) return;
-		const { stats, backlogItems, recentSessions, openLoops, graphTypes, todayObs } = data;
+		const { stats, backlogItems, overdueItems, recentSessions, openLoops, graphTypes, todayObs } = data;
 
 		// Header
 		const header = this.statusContentEl.createDiv({ cls: "clawvault-status-header" });
@@ -177,6 +180,10 @@ export class ClawVaultStatusView extends ItemView {
 			statusLine.createSpan({ text: `○ ${stats.tasks.open} open`, cls: "clawvault-task-open" });
 			statusLine.createSpan({ text: " | " });
 			statusLine.createSpan({ text: `⊘ ${stats.tasks.blocked} blocked`, cls: "clawvault-task-blocked" });
+			taskStats.createDiv({
+				text: `📅 ${stats.tasks.withDue} with due dates`,
+				cls: "clawvault-due-date",
+			});
 
 			// Completed with percentage
 			const completedPct = stats.tasks.total > 0
@@ -191,6 +198,34 @@ export class ClawVaultStatusView extends ItemView {
 			const progressBar = taskStats.createDiv({ cls: "clawvault-progress-bar" });
 			const progressFill = progressBar.createDiv({ cls: "clawvault-progress-fill" });
 			progressFill.style.width = `${completedPct}%`;
+		}
+
+		// Overdue section
+		if (overdueItems.length > 0) {
+			const overdueSection = this.statusContentEl.createDiv({
+				cls: "clawvault-status-section clawvault-overdue-warning",
+			});
+			overdueSection.createEl("h4", {
+				text: `⚠ Overdue (${overdueItems.length})`,
+				cls: "clawvault-overdue-warning",
+			});
+			const overdueList = overdueSection.createDiv({ cls: "clawvault-status-list" });
+			for (const task of overdueItems) {
+				const row = overdueList.createDiv({
+					cls: "clawvault-status-list-item clawvault-overdue-warning",
+				});
+				const link = row.createEl("a", {
+					text: task.frontmatter.title ?? task.file.basename,
+					cls: "clawvault-blocked-link",
+				});
+				link.addEventListener("click", (event) => {
+					event.preventDefault();
+					void this.app.workspace.openLinkText(task.file.path, "", "tab");
+				});
+				this.renderTaskDueDate(row, task.frontmatter.due, true);
+				this.renderTaskDependencies(row, task);
+				this.renderTaskTags(row, task.frontmatter.tags);
+			}
 		}
 
 		// Backlog section
@@ -228,6 +263,9 @@ export class ClawVaultStatusView extends ItemView {
 						cls: `clawvault-priority-${task.frontmatter.priority}`,
 					});
 				}
+				this.renderTaskDueDate(item, task.frontmatter.due);
+				this.renderTaskDependencies(item, task);
+				this.renderTaskTags(item, task.frontmatter.tags);
 			}
 		}
 
@@ -397,6 +435,128 @@ export class ClawVaultStatusView extends ItemView {
 	private getAgeInDays(date: Date): number {
 		const diffMs = Date.now() - date.getTime();
 		return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+	}
+
+	private parseDateValue(value: unknown): Date | null {
+		if (value instanceof Date) {
+			return Number.isNaN(value.getTime()) ? null : value;
+		}
+		if (typeof value === "number") {
+			const date = new Date(value);
+			return Number.isNaN(date.getTime()) ? null : date;
+		}
+		if (typeof value === "string" && value.trim().length > 0) {
+			const normalized = value.trim();
+			const ymdMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+			const date = ymdMatch
+				? new Date(
+					Number.parseInt(ymdMatch[1] ?? "0", 10),
+					Number.parseInt(ymdMatch[2] ?? "1", 10) - 1,
+					Number.parseInt(ymdMatch[3] ?? "1", 10)
+				)
+				: new Date(normalized);
+			return Number.isNaN(date.getTime()) ? null : date;
+		}
+		return null;
+	}
+
+	private startOfDay(date: Date): Date {
+		return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	}
+
+	private getDayDelta(date: Date): number {
+		const dayMs = 1000 * 60 * 60 * 24;
+		const target = this.startOfDay(date).getTime();
+		const today = this.startOfDay(new Date()).getTime();
+		return Math.floor((target - today) / dayMs);
+	}
+
+	private renderTaskDueDate(parent: HTMLElement, dueValue: unknown, overdueOnly = false): void {
+		const dueDate = this.parseDateValue(dueValue);
+		if (!dueDate) return;
+
+		const delta = this.getDayDelta(dueDate);
+		const dueMeta = parent.createDiv({
+			cls: "clawvault-status-list-meta clawvault-due-date",
+		});
+		const formattedDate = dueDate.toLocaleDateString();
+
+		if (delta < 0 || overdueOnly) {
+			const overdueDays = Math.max(1, Math.abs(delta));
+			dueMeta.setText(`Due ${formattedDate} · ${overdueDays}d overdue`);
+			dueMeta.addClass("clawvault-overdue-warning");
+			return;
+		}
+
+		if (delta === 0) {
+			dueMeta.setText(`Due ${formattedDate} · due today`);
+			return;
+		}
+
+		dueMeta.setText(`Due ${formattedDate} · ${delta}d left`);
+	}
+
+	private renderTaskDependencies(parent: HTMLElement, task: ParsedTask): void {
+		const dependencies = new Set<string>();
+		if (Array.isArray(task.frontmatter.depends_on)) {
+			for (const dep of task.frontmatter.depends_on) {
+				const normalized = dep.trim();
+				if (normalized.length > 0) dependencies.add(normalized);
+			}
+		}
+
+		const blockedBy = task.frontmatter.blocked_by;
+		if (Array.isArray(blockedBy)) {
+			for (const dep of blockedBy) {
+				const normalized = dep.trim();
+				if (normalized.length > 0) dependencies.add(normalized);
+			}
+		} else if (typeof blockedBy === "string" && blockedBy.trim().length > 0) {
+			dependencies.add(blockedBy.trim());
+		}
+
+		if (dependencies.size === 0) return;
+
+		parent.createDiv({
+			text: `Depends on: ${Array.from(dependencies).join(", ")}`,
+			cls: "clawvault-status-list-meta",
+		});
+	}
+
+	private normalizeTags(tags: string[] | string | undefined): string[] {
+		if (Array.isArray(tags)) {
+			return tags
+				.map((tag) => tag.trim())
+				.filter((tag) => tag.length > 0);
+		}
+
+		if (typeof tags !== "string") {
+			return [];
+		}
+
+		const normalizedInput = tags.trim();
+		if (normalizedInput.length === 0) {
+			return [];
+		}
+
+		const rawParts = normalizedInput.includes(",")
+			? normalizedInput.split(",")
+			: normalizedInput.split(/\s+/);
+		return rawParts
+			.map((part) => part.trim())
+			.filter((part) => part.length > 0);
+	}
+
+	private renderTaskTags(parent: HTMLElement, tags: string[] | string | undefined): void {
+		const normalizedTags = this.normalizeTags(tags);
+		if (normalizedTags.length === 0) return;
+
+		const tagsEl = parent.createDiv({ cls: "clawvault-task-tags" });
+		for (const tag of normalizedTags) {
+			tagsEl.createSpan({
+				text: tag.startsWith("#") ? tag : `#${tag}`,
+			});
+		}
 	}
 
 	private renderQuickActionButton(

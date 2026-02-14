@@ -184,8 +184,11 @@ export default class ClawVaultPlugin extends Plugin {
 		try {
 			const stats = await this.vaultReader.getVaultStats();
 			const activeTaskCount = stats.tasks.active + stats.tasks.open;
+			const overdueSuffix = stats.tasks.overdue > 0
+				? ` · ⚠ ${stats.tasks.overdue} overdue`
+				: "";
 			this.statusBarItem.setText(
-				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${activeTaskCount} tasks`
+				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${activeTaskCount} tasks${overdueSuffix}`
 			);
 		} catch {
 			this.statusBarItem.setText("🐘 ClawVault");

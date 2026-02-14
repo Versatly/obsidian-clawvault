@@ -64,6 +64,13 @@ export interface TaskFrontmatter {
 	created?: string;
 	completed?: string | null;
 	source?: string;
+	description?: string;
+	estimate?: string;
+	parent?: string;
+	depends_on?: string[];
+	escalation?: boolean;
+	confidence?: number;
+	reason?: string;
 }
 
 export interface ParsedTask {
@@ -90,6 +97,8 @@ export interface VaultStats {
 		blocked: number;
 		completed: number;
 		total: number;
+		withDue: number;
+		overdue: number;
 	};
 	inboxCount: number;
 	lastObservation?: Date;
@@ -291,10 +300,25 @@ export class VaultReader {
 			return Number.isNaN(date.getTime()) ? null : date;
 		}
 		if (typeof value === "string" && value.trim().length > 0) {
-			const date = new Date(value);
+			const normalized = value.trim();
+			const ymdMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+			const date = ymdMatch
+				? new Date(
+					Number.parseInt(ymdMatch[1] ?? "0", 10),
+					Number.parseInt(ymdMatch[2] ?? "1", 10) - 1,
+					Number.parseInt(ymdMatch[3] ?? "1", 10)
+				)
+				: new Date(normalized);
 			return Number.isNaN(date.getTime()) ? null : date;
 		}
 		return null;
+	}
+
+	/**
+	 * Normalize a date to local-day granularity.
+	 */
+	private startOfDay(date: Date): Date {
+		return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 	}
 
 	/**
@@ -329,12 +353,23 @@ export class VaultReader {
 			blocked: 0,
 			completed: 0,
 			total: 0,
+			withDue: 0,
+			overdue: 0,
 		};
 
 		const tasks = await this.getAllTasks();
+		const todayStart = this.startOfDay(new Date()).getTime();
 
 		for (const task of tasks) {
 			stats.total++;
+			const dueDate = this.parseDate(task.frontmatter.due);
+			const isDone = task.status === TASK_STATUS.DONE;
+			if (dueDate && !isDone) {
+				stats.withDue++;
+				if (this.startOfDay(dueDate).getTime() < todayStart) {
+					stats.overdue++;
+				}
+			}
 
 			switch (task.status) {
 				case TASK_STATUS.IN_PROGRESS:
@@ -353,6 +388,34 @@ export class VaultReader {
 		}
 
 		return stats;
+	}
+
+	/**
+	 * Get overdue tasks sorted by due date (oldest due date first).
+	 */
+	async getOverdueTasks(): Promise<ParsedTask[]> {
+		const todayStart = this.startOfDay(new Date()).getTime();
+		const tasks = await this.getAllTasks();
+
+		return tasks
+			.filter((task) => {
+				if (task.status === TASK_STATUS.DONE) {
+					return false;
+				}
+				const dueDate = this.parseDate(task.frontmatter.due);
+				if (!dueDate) {
+					return false;
+				}
+				return this.startOfDay(dueDate).getTime() < todayStart;
+			})
+			.sort((a, b) => {
+				const aDue = this.parseDate(a.frontmatter.due);
+				const bDue = this.parseDate(b.frontmatter.due);
+				if (!aDue && !bDue) return 0;
+				if (!aDue) return 1;
+				if (!bDue) return -1;
+				return this.startOfDay(aDue).getTime() - this.startOfDay(bDue).getTime();
+			});
 	}
 
 	/**
