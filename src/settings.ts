@@ -96,7 +96,7 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Show status bar")
-			.setDesc("Show node count and task count in the status bar")
+			.setDesc("Show graph node and edge counts in the status bar")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.showStatusBar)
@@ -109,7 +109,7 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Show file decorations")
-			.setDesc("Show status icons on task files in the file explorer")
+			.setDesc("Show inbox indicators in the file explorer")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.showFileDecorations)
@@ -178,7 +178,7 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName("About").setHeading();
 		
 		containerEl.createEl("p", {
-			text: "ClawVault is a visual memory management plugin for Obsidian. It provides colored graph nodes, task tracking, and vault statistics.",
+			text: "ClawVault is a visual memory health plugin for Obsidian. It provides graph insights, quick capture, and vault statistics.",
 		});
 		containerEl.createEl("p", {
 			text: "For more information, visit the ClawVault documentation.",

@@ -5,7 +5,7 @@
 
 import { TFile } from "obsidian";
 import type ClawVaultPlugin from "./main";
-import { DEFAULT_FOLDERS, STATUS_ICONS, TaskStatus, TASK_STATUS } from "./constants";
+import { DEFAULT_FOLDERS } from "./constants";
 
 /**
  * Manages file explorer decorations
@@ -140,14 +140,6 @@ export class FileDecorations {
 			return "📥";
 		}
 
-		// Check if file is a task
-		if (this.isInFolder(file, DEFAULT_FOLDERS.TASKS)) {
-			const status = await this.plugin.vaultReader.getTaskStatus(file);
-			if (status) {
-				return STATUS_ICONS[status] ?? STATUS_ICONS[TASK_STATUS.OPEN];
-			}
-		}
-
 		return null;
 	}
 
@@ -192,14 +184,6 @@ export class FileDecorations {
 		switch (decoration) {
 			case "📥":
 				return "Inbox item";
-			case STATUS_ICONS[TASK_STATUS.OPEN]:
-				return "Open task";
-			case STATUS_ICONS[TASK_STATUS.IN_PROGRESS]:
-				return "Active task";
-			case STATUS_ICONS[TASK_STATUS.BLOCKED]:
-				return "Blocked task";
-			case STATUS_ICONS[TASK_STATUS.DONE]:
-				return "Completed task";
 			default:
 				return "";
 		}
