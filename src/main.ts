@@ -58,6 +58,30 @@ export default class ClawVaultPlugin extends Plugin {
 
 		// Initial status bar update
 		void this.updateStatusBar();
+
+		// Auto-setup graph colors on first install
+		if (!this.settings.graphColorsConfigured) {
+			this.app.workspace.onLayoutReady(() => {
+				void this.autoSetupGraphColors();
+			});
+		}
+	}
+
+	/**
+	 * Auto-configure graph colors on first plugin install
+	 */
+	private async autoSetupGraphColors(): Promise<void> {
+		try {
+			// Trigger the setup command programmatically
+			(this.app as unknown as { commands: { executeCommandById: (id: string) => void } })
+				.commands.executeCommandById("clawvault-setup-graph-colors");
+			
+			// Mark as configured so we don't repeat
+			this.settings.graphColorsConfigured = true;
+			await this.saveSettings();
+		} catch {
+			// Silently fail — user can run manually
+		}
 	}
 
 	onunload(): void {

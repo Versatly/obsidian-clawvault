@@ -25,6 +25,9 @@ export interface ClawVaultSettings {
 	
 	// Show file decorations
 	showFileDecorations: boolean;
+
+	// Whether graph colors have been auto-configured
+	graphColorsConfigured: boolean;
 }
 
 /**
@@ -36,6 +39,7 @@ export const DEFAULT_SETTINGS: ClawVaultSettings = {
 	refreshInterval: DEFAULT_REFRESH_INTERVAL,
 	showStatusBar: true,
 	showFileDecorations: true,
+	graphColorsConfigured: false,
 };
 
 /**
