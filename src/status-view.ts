@@ -185,7 +185,7 @@ export class ClawVaultStatusView extends ItemView {
 			cls: "clawvault-refresh-btn",
 		});
 		refreshBtn.addEventListener("click", () => {
-			void this.refresh();
+			void this.plugin.refreshAll();
 		});
 	}
 
@@ -211,7 +211,7 @@ export class ClawVaultStatusView extends ItemView {
 			cls: "clawvault-refresh-btn",
 		});
 		refreshBtn.addEventListener("click", () => {
-			void this.refresh();
+			void this.plugin.refreshAll();
 		});
 	}
 
