@@ -7,14 +7,14 @@ import { Plugin, WorkspaceLeaf } from "obsidian";
 import { ClawVaultSettings, ClawVaultSettingTab, DEFAULT_SETTINGS } from "./settings";
 import { VaultReader } from "./vault-reader";
 import { ClawVaultStatusView } from "./status-view";
-import { ClawVaultTaskBoardView } from "./task-board-view";
+// Task board view removed — Kanban plugin handles task visualization
 import { FileDecorations } from "./decorations";
 import { GraphEnhancer } from "./graph-enhancer";
 import { registerCommands } from "./commands";
 import {
 	DEFAULT_CATEGORY_COLORS,
 	STATUS_VIEW_TYPE,
-	TASK_BOARD_VIEW_TYPE,
+	// TASK_BOARD_VIEW_TYPE removed — using Kanban plugin
 } from "./constants";
 
 export default class ClawVaultPlugin extends Plugin {
@@ -37,10 +37,7 @@ export default class ClawVaultPlugin extends Plugin {
 			return new ClawVaultStatusView(leaf, this);
 		});
 
-		// Register the task board view
-		this.registerView(TASK_BOARD_VIEW_TYPE, (leaf: WorkspaceLeaf) => {
-			return new ClawVaultTaskBoardView(leaf, this);
-		});
+		// Task board view removed — Kanban plugin is the task UI
 
 		// Add ribbon icon
 		this.addRibbonIcon("database", "ClawVault status", () => {
@@ -163,28 +160,7 @@ export default class ClawVaultPlugin extends Plugin {
 		}
 	}
 
-	/**
-	 * Activate the task board view in the right sidebar
-	 */
-	async activateTaskBoardView(): Promise<void> {
-		const { workspace } = this.app;
-		let leaf = workspace.getLeavesOfType(TASK_BOARD_VIEW_TYPE)[0];
-
-		if (!leaf) {
-			const rightLeaf = workspace.getRightLeaf(false);
-			if (rightLeaf) {
-				await rightLeaf.setViewState({
-					type: TASK_BOARD_VIEW_TYPE,
-					active: true,
-				});
-				leaf = rightLeaf;
-			}
-		}
-
-		if (leaf) {
-			await workspace.revealLeaf(leaf);
-		}
-	}
+	// Task board view removed — use Kanban plugin + Board.md
 
 	/**
 	 * Update status bar visibility based on settings
@@ -258,14 +234,7 @@ export default class ClawVaultPlugin extends Plugin {
 			}
 		}
 
-		// Refresh task board if open
-		const boardLeaves = this.app.workspace.getLeavesOfType(TASK_BOARD_VIEW_TYPE);
-		for (const leaf of boardLeaves) {
-			const view = leaf.view;
-			if (view instanceof ClawVaultTaskBoardView) {
-				await view.refresh();
-			}
-		}
+		// Task board removed — Kanban plugin handles task visualization
 
 		// Update file decorations
 		if (this.fileDecorations) {

@@ -28,10 +28,20 @@ export interface GraphEdge {
 	type?: string;
 }
 
-// Graph index structure
+// Graph index structure (supports both flat and nested formats)
 export interface GraphIndex {
 	nodes: GraphNode[];
 	edges: GraphEdge[];
+}
+
+interface RawGraphIndex {
+	nodes?: GraphNode[];
+	edges?: GraphEdge[];
+	graph?: {
+		nodes?: GraphNode[];
+		edges?: GraphEdge[];
+		stats?: Record<string, unknown>;
+	};
 }
 
 // ClawVault config structure
@@ -163,7 +173,11 @@ export class VaultReader {
 		const content = await this.readFileByAdapter(CLAWVAULT_GRAPH_INDEX);
 		if (content) {
 			try {
-				this.cachedGraphIndex = JSON.parse(content) as GraphIndex;
+				const raw = JSON.parse(content) as RawGraphIndex;
+				// Support both flat {nodes, edges} and nested {graph: {nodes, edges}}
+				const nodes = raw.graph?.nodes ?? raw.nodes ?? [];
+				const edges = raw.graph?.edges ?? raw.edges ?? [];
+				this.cachedGraphIndex = { nodes, edges };
 				this.lastCacheTime = Date.now();
 				return this.cachedGraphIndex;
 			} catch (error) {

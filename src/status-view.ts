@@ -332,11 +332,6 @@ export class ClawVaultStatusView extends ItemView {
 			"Quick Capture",
 			COMMAND_IDS.QUICK_CAPTURE
 		);
-		this.renderQuickActionButton(
-			actionsRow,
-			"Generate Dashboard",
-			COMMAND_IDS.GENERATE_DASHBOARD
-		);
 
 		// Refresh button
 		const footer = this.statusContentEl.createDiv({ cls: "clawvault-status-footer" });
