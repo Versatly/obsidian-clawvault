@@ -174,7 +174,7 @@ export class GraphEnhancer {
 				.map((tag) => tag.replace(/^#/, "").trim().toLowerCase())
 				.filter((tag) => tag.length > 0);
 			if (tags.length > 0) {
-				return tags[0];
+				return tags[0] ?? null;
 			}
 		}
 

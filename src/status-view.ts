@@ -354,7 +354,20 @@ export class ClawVaultStatusView extends ItemView {
 			cls: "clawvault-quick-action-btn",
 		});
 		button.addEventListener("click", () => {
-			void this.app.commands.executeCommandById(commandId);
+			void this.executeCommandById(commandId);
 		});
+	}
+
+	private async executeCommandById(commandId: string): Promise<void> {
+		const commandManager = (
+			this.app as typeof this.app & {
+				commands?: {
+					executeCommandById: (id: string) => Promise<boolean> | boolean;
+				};
+			}
+		).commands;
+		if (commandManager?.executeCommandById) {
+			await commandManager.executeCommandById(commandId);
+		}
 	}
 }
