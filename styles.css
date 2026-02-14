@@ -8,14 +8,22 @@
    ========================================================================== */
 
 :root {
-	--clawvault-color-tasks: #e8a430;
-	--clawvault-color-decisions: #e85d4a;
-	--clawvault-color-people: #4a90e8;
-	--clawvault-color-projects: #4ae85d;
-	--clawvault-color-lessons: #9b59b6;
-	--clawvault-color-blocked: #e74c3c;
+	/* BrainMeld-inspired color palette */
+	--clawvault-color-tasks: #22b8cf;
+	--clawvault-color-decisions: #e8590c;
+	--clawvault-color-people: #00b4d8;
+	--clawvault-color-projects: #2d6a4f;
+	--clawvault-color-lessons: #fcc419;
+	--clawvault-color-blocked: #e03131;
+	--clawvault-color-commitments: #e03131;
 	--clawvault-color-backlog: #95a5a6;
 	--clawvault-color-inbox: #f39c12;
+	--clawvault-color-observations: #7950f2;
+	--clawvault-color-handoffs: #845ef7;
+	--clawvault-color-daily: #495057;
+	--clawvault-color-focused: #e8a430;
+	--clawvault-color-links: rgba(45, 200, 120, 0.15);
+	--clawvault-color-links-focused: rgba(45, 200, 120, 0.6);
 	--clawvault-color-default: #7f8c8d;
 }
 
@@ -341,80 +349,101 @@
 }
 
 /* ==========================================================================
-   Graph View Styling
+   Graph View — BrainMeld Style
+   Neural network aesthetic: dark bg, colored nodes, green links
    ========================================================================== */
 
-/* Category-based node coloring */
-.graph-view .node[data-category="tasks"] circle {
-	fill: var(--clawvault-color-tasks) !important;
+/* Dark graph background */
+body.theme-dark .graph-view .graph-view-container {
+	background-color: #0a0a0a;
 }
 
-.graph-view .node[data-category="decisions"] circle {
-	fill: var(--clawvault-color-decisions) !important;
-}
-
-.graph-view .node[data-category="people"] circle {
+/* Node colors by tag */
+body.theme-dark .graph-view .node.tag-person circle,
+.graph-view.color-fill-tag[data-tag="person"] {
 	fill: var(--clawvault-color-people) !important;
+	color: var(--clawvault-color-people) !important;
 }
 
-.graph-view .node[data-category="projects"] circle {
+body.theme-dark .graph-view .node.tag-project circle,
+.graph-view.color-fill-tag[data-tag="project"] {
 	fill: var(--clawvault-color-projects) !important;
+	color: var(--clawvault-color-projects) !important;
 }
 
-.graph-view .node[data-category="lessons"] circle {
-	fill: var(--clawvault-color-lessons) !important;
-}
-
-.graph-view .node[data-category="blocked"] circle {
-	fill: var(--clawvault-color-blocked) !important;
-}
-
-.graph-view .node[data-category="backlog"] circle {
-	fill: var(--clawvault-color-backlog) !important;
-}
-
-.graph-view .node[data-category="inbox"] circle {
-	fill: var(--clawvault-color-inbox) !important;
-}
-
-/* Folder-based coloring (using path patterns) */
-.graph-view .node[data-path^="tasks/"] circle {
-	fill: var(--clawvault-color-tasks) !important;
-}
-
-.graph-view .node[data-path^="decisions/"] circle {
+body.theme-dark .graph-view .node.tag-decision circle,
+.graph-view.color-fill-tag[data-tag="decision"] {
 	fill: var(--clawvault-color-decisions) !important;
+	color: var(--clawvault-color-decisions) !important;
 }
 
-.graph-view .node[data-path^="people/"] circle {
-	fill: var(--clawvault-color-people) !important;
-}
-
-.graph-view .node[data-path^="projects/"] circle {
-	fill: var(--clawvault-color-projects) !important;
-}
-
-.graph-view .node[data-path^="lessons/"] circle {
+body.theme-dark .graph-view .node.tag-lesson circle,
+.graph-view.color-fill-tag[data-tag="lesson"] {
 	fill: var(--clawvault-color-lessons) !important;
+	color: var(--clawvault-color-lessons) !important;
 }
 
-.graph-view .node[data-path^="backlog/"] circle {
-	fill: var(--clawvault-color-backlog) !important;
+body.theme-dark .graph-view .node.tag-commitment circle,
+.graph-view.color-fill-tag[data-tag="commitment"] {
+	fill: var(--clawvault-color-commitments) !important;
+	color: var(--clawvault-color-commitments) !important;
 }
 
-.graph-view .node[data-path^="inbox/"] circle {
-	fill: var(--clawvault-color-inbox) !important;
+body.theme-dark .graph-view .node.tag-task circle,
+.graph-view.color-fill-tag[data-tag="task"] {
+	fill: var(--clawvault-color-tasks) !important;
+	color: var(--clawvault-color-tasks) !important;
 }
 
-/* Graph link styling */
-.graph-view .links line {
-	stroke: var(--background-modifier-border);
-	stroke-opacity: 0.6;
+body.theme-dark .graph-view .node.tag-observation circle,
+.graph-view.color-fill-tag[data-tag="observation"] {
+	fill: var(--clawvault-color-observations) !important;
+	color: var(--clawvault-color-observations) !important;
 }
 
-.graph-view .links line:hover {
-	stroke-opacity: 1;
+body.theme-dark .graph-view .node.tag-handoff circle,
+.graph-view.color-fill-tag[data-tag="handoff"] {
+	fill: var(--clawvault-color-handoffs) !important;
+	color: var(--clawvault-color-handoffs) !important;
 }
+
+body.theme-dark .graph-view .node.tag-daily circle {
+	fill: var(--clawvault-color-daily) !important;
+}
+
+/* Focused node — golden glow */
+body.theme-dark .graph-view .node.is-focused circle {
+	fill: var(--clawvault-color-focused) !important;
+	stroke: var(--clawvault-color-focused) !important;
+	stroke-width: 3px;
+	filter: drop-shadow(0 0 6px var(--clawvault-color-focused));
+}
+
+/* Links — green neural network style */
+body.theme-dark .graph-view .link {
+	stroke: var(--clawvault-color-links) !important;
+}
+
+body.theme-dark .graph-view .link.is-focused {
+	stroke: var(--clawvault-color-links-focused) !important;
+}
+
+/* Node text labels */
+body.theme-dark .graph-view .node text {
+	fill: #c1c2c5 !important;
+	font-size: 0.8em;
+}
+
+/* Folder-based coloring fallback */
+.graph-view .node[data-path^="tasks/"] circle { fill: var(--clawvault-color-tasks) !important; }
+.graph-view .node[data-path^="decisions/"] circle { fill: var(--clawvault-color-decisions) !important; }
+.graph-view .node[data-path^="people/"] circle { fill: var(--clawvault-color-people) !important; }
+.graph-view .node[data-path^="projects/"] circle { fill: var(--clawvault-color-projects) !important; }
+.graph-view .node[data-path^="lessons/"] circle { fill: var(--clawvault-color-lessons) !important; }
+.graph-view .node[data-path^="backlog/"] circle { fill: var(--clawvault-color-backlog) !important; }
+.graph-view .node[data-path^="inbox/"] circle { fill: var(--clawvault-color-inbox) !important; }
+.graph-view .node[data-path^="commitments/"] circle { fill: var(--clawvault-color-commitments) !important; }
+.graph-view .node[data-path^="handoffs/"] circle { fill: var(--clawvault-color-handoffs) !important; }
 
 /* ==========================================================================
    Settings Tab
