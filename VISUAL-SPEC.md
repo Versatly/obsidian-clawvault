@@ -1,8 +1,8 @@
-# ClawVault Visual Spec — BrainMeld Style
+# ClawVault Visual Spec — Neural Graph Style
 
 ## The Look
 
-Dark background (#0a0a0a), colored nodes by category, green links between nodes, subtle glow on focused nodes. This is the "BrainMeld" style that makes knowledge graphs look like neural networks.
+Dark background (#0a0a0a), colored nodes by category, green links between nodes, subtle glow on focused nodes. This is the "neural graph" style that makes knowledge graphs look like neural networks.
 
 ## Graph Color Scheme
 
@@ -66,7 +66,7 @@ The generated `dashboard.canvas` should use Obsidian's canvas color system:
 ## Setup Command
 
 `ClawVault: Setup Graph Colors` command should:
-1. Create/update `.obsidian/snippets/clawvault-graph.css` with the BrainMeld styles
+1. Create/update `.obsidian/snippets/clawvault-graph.css` with the neural graph styles
 2. Enable the snippet in `.obsidian/appearance.json`
 3. Update `.obsidian/graph.json` with colorGroups config
-4. Show a Notice: "Graph colors configured! Open Graph View to see the BrainMeld style."
+4. Show a Notice: "Graph colors configured! Open Graph View to see the neural graph style."

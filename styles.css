@@ -8,7 +8,7 @@
    ========================================================================== */
 
 :root {
-	/* BrainMeld-inspired color palette */
+	/* ClawVault neural graph palette */
 	--clawvault-color-tasks: #22b8cf;
 	--clawvault-color-decisions: #e8590c;
 	--clawvault-color-people: #00b4d8;
@@ -349,7 +349,7 @@
 }
 
 /* ==========================================================================
-   Graph View — BrainMeld Style
+   Graph View — Neural Style
    Neural network aesthetic: dark bg, colored nodes, green links
    ========================================================================== */
 
