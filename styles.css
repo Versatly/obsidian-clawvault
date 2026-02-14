@@ -8,22 +8,14 @@
    ========================================================================== */
 
 :root {
-	/* ClawVault neural graph palette */
-	--clawvault-color-tasks: #22b8cf;
-	--clawvault-color-decisions: #e8590c;
-	--clawvault-color-people: #00b4d8;
-	--clawvault-color-projects: #2d6a4f;
-	--clawvault-color-lessons: #fcc419;
-	--clawvault-color-blocked: #e03131;
-	--clawvault-color-commitments: #e03131;
+	--clawvault-color-tasks: #e8a430;
+	--clawvault-color-decisions: #e85d4a;
+	--clawvault-color-people: #4a90e8;
+	--clawvault-color-projects: #4ae85d;
+	--clawvault-color-lessons: #9b59b6;
+	--clawvault-color-blocked: #e74c3c;
 	--clawvault-color-backlog: #95a5a6;
 	--clawvault-color-inbox: #f39c12;
-	--clawvault-color-observations: #7950f2;
-	--clawvault-color-handoffs: #845ef7;
-	--clawvault-color-daily: #495057;
-	--clawvault-color-focused: #e8a430;
-	--clawvault-color-links: rgba(45, 200, 120, 0.15);
-	--clawvault-color-links-focused: rgba(45, 200, 120, 0.6);
 	--clawvault-color-default: #7f8c8d;
 }
 
@@ -70,6 +62,28 @@
 
 .clawvault-status-section {
 	padding: 8px 0;
+}
+
+.clawvault-status-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.clawvault-status-list-item {
+	padding: 8px 10px;
+	border-radius: 6px;
+	background-color: var(--background-secondary);
+}
+
+.clawvault-status-list-meta {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+
+.clawvault-open-loop-warning {
+	border-left: 3px solid var(--clawvault-color-inbox);
 }
 
 .clawvault-status-section h4 {
@@ -158,6 +172,21 @@
 	border-top: 1px solid var(--background-modifier-border);
 }
 
+.clawvault-status-quick-actions {
+	padding-top: 0;
+}
+
+.clawvault-quick-action-row {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.clawvault-quick-action-btn {
+	flex: 1;
+	min-width: 120px;
+}
+
 .clawvault-refresh-btn {
 	width: 100%;
 }
@@ -184,15 +213,28 @@
 
 .clawvault-capture-modal,
 .clawvault-task-modal,
-.clawvault-blocked-modal {
+.clawvault-blocked-modal,
+.clawvault-template-modal,
+.clawvault-open-loops-modal {
 	max-width: 500px;
 }
 
 .clawvault-capture-modal h2,
 .clawvault-task-modal h2,
-.clawvault-blocked-modal h2 {
+.clawvault-blocked-modal h2,
+.clawvault-template-modal h2,
+.clawvault-open-loops-modal h2 {
 	margin-top: 0;
 	margin-bottom: 16px;
+}
+
+.clawvault-template-description {
+	font-size: 0.9em;
+	color: var(--text-muted);
+	background-color: var(--background-secondary);
+	padding: 10px 12px;
+	border-radius: 6px;
+	margin-bottom: 12px;
 }
 
 /* Textareas */
@@ -252,6 +294,15 @@
 	background-color: var(--background-secondary);
 	border-radius: 6px;
 	border-left: 3px solid var(--clawvault-color-blocked);
+}
+
+.clawvault-open-loop-item {
+	border-left-color: var(--clawvault-color-inbox);
+}
+
+.clawvault-open-loop-age {
+	color: var(--clawvault-color-inbox);
+	font-weight: 600;
 }
 
 .clawvault-blocked-title {
@@ -332,6 +383,152 @@
 }
 
 /* ==========================================================================
+   Task board view
+   ========================================================================== */
+
+.clawvault-task-board-view {
+	padding: 16px;
+}
+
+.clawvault-task-board-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.clawvault-board-filter-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.clawvault-board-filter-label {
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
+.clawvault-board-filter-select-wrap {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.clawvault-board-filter-select-label {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.clawvault-board-filter-select {
+	min-width: 120px;
+}
+
+.clawvault-board-filter-reset {
+	margin-left: auto;
+}
+
+.clawvault-kanban-board {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(220px, 1fr));
+	gap: 12px;
+	align-items: start;
+}
+
+.clawvault-kanban-column {
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	min-height: 280px;
+	border: 1px solid var(--background-modifier-border);
+	display: flex;
+	flex-direction: column;
+}
+
+.clawvault-kanban-column-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.clawvault-kanban-column-title {
+	font-weight: 600;
+	font-size: 0.9em;
+}
+
+.clawvault-kanban-column-count {
+	font-size: 0.8em;
+	color: var(--text-muted);
+}
+
+.clawvault-kanban-column-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px;
+	min-height: 220px;
+	transition: background-color 0.15s ease;
+}
+
+.clawvault-kanban-column-body.is-drag-over {
+	background-color: var(--background-modifier-hover);
+}
+
+.clawvault-kanban-empty {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	text-align: center;
+	padding: 8px;
+}
+
+.clawvault-task-card {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-left-width: 4px;
+	border-radius: 6px;
+	padding: 8px 10px;
+	cursor: pointer;
+	user-select: none;
+}
+
+.clawvault-task-card.is-dragging {
+	opacity: 0.65;
+}
+
+.clawvault-task-card-title {
+	font-size: 0.9em;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.clawvault-task-card-meta {
+	font-size: 0.8em;
+	color: var(--text-muted);
+}
+
+.clawvault-task-card-blocked-by {
+	font-size: 0.8em;
+	color: var(--clawvault-color-blocked);
+	margin-top: 6px;
+}
+
+.clawvault-task-priority-critical {
+	border-left-color: var(--clawvault-color-blocked);
+}
+
+.clawvault-task-priority-high {
+	border-left-color: var(--clawvault-color-decisions);
+}
+
+.clawvault-task-priority-medium {
+	border-left-color: var(--clawvault-color-people);
+}
+
+.clawvault-task-priority-low {
+	border-left-color: var(--clawvault-color-backlog);
+}
+
+/* ==========================================================================
    File Explorer Decorations
    ========================================================================== */
 
@@ -349,101 +546,90 @@
 }
 
 /* ==========================================================================
-   Graph View — Neural Style
-   Neural network aesthetic: dark bg, colored nodes, green links
+   Graph View Styling
    ========================================================================== */
 
-/* Dark graph background */
-body.theme-dark .graph-view .graph-view-container {
-	background-color: #0a0a0a;
-}
-
-/* Node colors by tag */
-body.theme-dark .graph-view .node.tag-person circle,
-.graph-view.color-fill-tag[data-tag="person"] {
-	fill: var(--clawvault-color-people) !important;
-	color: var(--clawvault-color-people) !important;
-}
-
-body.theme-dark .graph-view .node.tag-project circle,
-.graph-view.color-fill-tag[data-tag="project"] {
-	fill: var(--clawvault-color-projects) !important;
-	color: var(--clawvault-color-projects) !important;
-}
-
-body.theme-dark .graph-view .node.tag-decision circle,
-.graph-view.color-fill-tag[data-tag="decision"] {
-	fill: var(--clawvault-color-decisions) !important;
-	color: var(--clawvault-color-decisions) !important;
-}
-
-body.theme-dark .graph-view .node.tag-lesson circle,
-.graph-view.color-fill-tag[data-tag="lesson"] {
-	fill: var(--clawvault-color-lessons) !important;
-	color: var(--clawvault-color-lessons) !important;
-}
-
-body.theme-dark .graph-view .node.tag-commitment circle,
-.graph-view.color-fill-tag[data-tag="commitment"] {
-	fill: var(--clawvault-color-commitments) !important;
-	color: var(--clawvault-color-commitments) !important;
-}
-
-body.theme-dark .graph-view .node.tag-task circle,
-.graph-view.color-fill-tag[data-tag="task"] {
+/* Category-based node coloring */
+.graph-view .node[data-category="tasks"] circle {
 	fill: var(--clawvault-color-tasks) !important;
-	color: var(--clawvault-color-tasks) !important;
 }
 
-body.theme-dark .graph-view .node.tag-observation circle,
-.graph-view.color-fill-tag[data-tag="observation"] {
-	fill: var(--clawvault-color-observations) !important;
-	color: var(--clawvault-color-observations) !important;
+.graph-view .node[data-category="decisions"] circle {
+	fill: var(--clawvault-color-decisions) !important;
 }
 
-body.theme-dark .graph-view .node.tag-handoff circle,
-.graph-view.color-fill-tag[data-tag="handoff"] {
-	fill: var(--clawvault-color-handoffs) !important;
-	color: var(--clawvault-color-handoffs) !important;
+.graph-view .node[data-category="people"] circle {
+	fill: var(--clawvault-color-people) !important;
 }
 
-body.theme-dark .graph-view .node.tag-daily circle {
-	fill: var(--clawvault-color-daily) !important;
+.graph-view .node[data-category="projects"] circle {
+	fill: var(--clawvault-color-projects) !important;
 }
 
-/* Focused node — golden glow */
-body.theme-dark .graph-view .node.is-focused circle {
-	fill: var(--clawvault-color-focused) !important;
-	stroke: var(--clawvault-color-focused) !important;
-	stroke-width: 3px;
-	filter: drop-shadow(0 0 6px var(--clawvault-color-focused));
+.graph-view .node[data-category="lessons"] circle {
+	fill: var(--clawvault-color-lessons) !important;
 }
 
-/* Links — green neural network style */
-body.theme-dark .graph-view .link {
-	stroke: var(--clawvault-color-links) !important;
+.graph-view .node[data-category="blocked"] circle {
+	fill: var(--clawvault-color-blocked) !important;
 }
 
-body.theme-dark .graph-view .link.is-focused {
-	stroke: var(--clawvault-color-links-focused) !important;
+.graph-view .node[data-category="backlog"] circle {
+	fill: var(--clawvault-color-backlog) !important;
 }
 
-/* Node text labels */
-body.theme-dark .graph-view .node text {
-	fill: #c1c2c5 !important;
-	font-size: 0.8em;
+.graph-view .node[data-category="inbox"] circle {
+	fill: var(--clawvault-color-inbox) !important;
 }
 
-/* Folder-based coloring fallback */
-.graph-view .node[data-path^="tasks/"] circle { fill: var(--clawvault-color-tasks) !important; }
-.graph-view .node[data-path^="decisions/"] circle { fill: var(--clawvault-color-decisions) !important; }
-.graph-view .node[data-path^="people/"] circle { fill: var(--clawvault-color-people) !important; }
-.graph-view .node[data-path^="projects/"] circle { fill: var(--clawvault-color-projects) !important; }
-.graph-view .node[data-path^="lessons/"] circle { fill: var(--clawvault-color-lessons) !important; }
-.graph-view .node[data-path^="backlog/"] circle { fill: var(--clawvault-color-backlog) !important; }
-.graph-view .node[data-path^="inbox/"] circle { fill: var(--clawvault-color-inbox) !important; }
-.graph-view .node[data-path^="commitments/"] circle { fill: var(--clawvault-color-commitments) !important; }
-.graph-view .node[data-path^="handoffs/"] circle { fill: var(--clawvault-color-handoffs) !important; }
+/* Folder-based coloring (using path patterns) */
+.graph-view .node[data-path^="tasks/"] circle {
+	fill: var(--clawvault-color-tasks) !important;
+}
+
+.graph-view .node[data-path^="decisions/"] circle {
+	fill: var(--clawvault-color-decisions) !important;
+}
+
+.graph-view .node[data-path^="people/"] circle {
+	fill: var(--clawvault-color-people) !important;
+}
+
+.graph-view .node[data-path^="projects/"] circle {
+	fill: var(--clawvault-color-projects) !important;
+}
+
+.graph-view .node[data-path^="lessons/"] circle {
+	fill: var(--clawvault-color-lessons) !important;
+}
+
+.graph-view .node[data-path^="backlog/"] circle {
+	fill: var(--clawvault-color-backlog) !important;
+}
+
+.graph-view .node[data-path^="inbox/"] circle {
+	fill: var(--clawvault-color-inbox) !important;
+}
+
+/* Graph link styling */
+.graph-view .links line {
+	stroke: var(--background-modifier-border);
+	stroke-opacity: 0.6;
+}
+
+.graph-view .links line:hover {
+	stroke-opacity: 1;
+}
+
+/* Enhanced graph styles */
+.graph-view .node.clawvault-node-tagged circle {
+	fill: var(--clawvault-tag-color) !important;
+}
+
+.graph-view .node.clawvault-node-critical circle {
+	transform: scale(1.35);
+	transform-origin: center;
+}
 
 /* ==========================================================================
    Settings Tab
@@ -479,6 +665,14 @@ body.theme-dark .graph-view .node text {
 
 	.clawvault-modal-buttons button {
 		width: 100%;
+	}
+
+	.clawvault-kanban-board {
+		grid-template-columns: 1fr;
+	}
+
+	.clawvault-board-filter-reset {
+		margin-left: 0;
 	}
 }
 
