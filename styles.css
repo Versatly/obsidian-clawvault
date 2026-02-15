@@ -64,6 +64,39 @@
 	padding: 8px 0;
 }
 
+.clawvault-sync-section {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 10px;
+	background: var(--background-secondary);
+	transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.clawvault-sync-server,
+.clawvault-sync-last,
+.clawvault-sync-summary,
+.clawvault-sync-progress,
+.clawvault-sync-message {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+
+.clawvault-sync-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.clawvault-sync-action-btn {
+	flex: 1;
+}
+
+.clawvault-sync-highlight {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
 .clawvault-status-list {
 	display: flex;
 	flex-direction: column;

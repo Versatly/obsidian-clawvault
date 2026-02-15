@@ -3,7 +3,7 @@
  * Visual memory management for ClawVault vaults
  */
 
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { Notice, Plugin, WorkspaceLeaf } from "obsidian";
 import { ClawVaultSettings, ClawVaultSettingTab, DEFAULT_SETTINGS } from "./settings";
 import { VaultReader } from "./vault-reader";
 import { ClawVaultStatusView } from "./status-view";
@@ -13,9 +13,18 @@ import { GraphEnhancer } from "./graph-enhancer";
 import { registerCommands } from "./commands";
 import {
 	DEFAULT_CATEGORY_COLORS,
+	MIN_SYNC_INTERVAL_MINUTES,
 	STATUS_VIEW_TYPE,
 	// TASK_BOARD_VIEW_TYPE removed — using Kanban plugin
 } from "./constants";
+import { SyncClient } from "./sync/sync-client";
+import { SyncEngine } from "./sync/sync-engine";
+import {
+	DEFAULT_SYNC_SETTINGS,
+	type SyncMode,
+	type SyncResult,
+	type SyncRuntimeState,
+} from "./sync/sync-types";
 
 export default class ClawVaultPlugin extends Plugin {
 	settings: ClawVaultSettings = DEFAULT_SETTINGS;
@@ -23,8 +32,20 @@ export default class ClawVaultPlugin extends Plugin {
 	
 	private statusBarItem: HTMLElement | null = null;
 	private refreshIntervalId: number | null = null;
+	private syncIntervalId: number | null = null;
 	private fileDecorations: FileDecorations | null = null;
 	private graphEnhancer: GraphEnhancer | null = null;
+	private settingTab: ClawVaultSettingTab | null = null;
+	private syncClient: SyncClient | null = null;
+	private syncEngine: SyncEngine | null = null;
+	private syncState: SyncRuntimeState = {
+		status: "disconnected",
+		serverUrl: "",
+		message: "Sync server not configured",
+		lastSyncTimestamp: 0,
+		lastSyncStats: null,
+		progress: null,
+	};
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -43,6 +64,9 @@ export default class ClawVaultPlugin extends Plugin {
 		this.addRibbonIcon("database", "ClawVault status", () => {
 			void this.activateStatusView();
 		});
+		this.addRibbonIcon("refresh-cw", "ClawVault sync now", () => {
+			void this.syncNow("full");
+		});
 
 		// Add status bar item
 		this.statusBarItem = this.addStatusBarItem();
@@ -56,7 +80,8 @@ export default class ClawVaultPlugin extends Plugin {
 		registerCommands(this);
 
 		// Add settings tab
-		this.addSettingTab(new ClawVaultSettingTab(this.app, this));
+		this.settingTab = new ClawVaultSettingTab(this.app, this);
+		this.addSettingTab(this.settingTab);
 
 		// Initialize file decorations
 		this.fileDecorations = new FileDecorations(this);
@@ -65,6 +90,9 @@ export default class ClawVaultPlugin extends Plugin {
 		// Initialize graph enhancements
 		this.graphEnhancer = new GraphEnhancer(this);
 		this.graphEnhancer.initialize();
+
+		// Initialize sync modules
+		this.reconfigureSync();
 
 		// Start refresh interval
 		this.startRefreshInterval();
@@ -78,6 +106,13 @@ export default class ClawVaultPlugin extends Plugin {
 				void this.autoSetupGraphColors();
 			});
 		}
+
+		// Optional sync on open
+		this.app.workspace.onLayoutReady(() => {
+			if (this.settings.sync.syncOnOpen && this.settings.sync.serverUrl.trim().length > 0) {
+				void this.syncNow("full", true);
+			}
+		});
 	}
 
 	/**
@@ -98,10 +133,20 @@ export default class ClawVaultPlugin extends Plugin {
 	}
 
 	onunload(): void {
+		if (this.settings.sync.syncOnClose) {
+			void this.syncNow("full", true);
+		}
+
 		// Clean up refresh interval
 		if (this.refreshIntervalId !== null) {
 			window.clearInterval(this.refreshIntervalId);
 			this.refreshIntervalId = null;
+		}
+
+		// Clean up sync interval
+		if (this.syncIntervalId !== null) {
+			window.clearInterval(this.syncIntervalId);
+			this.syncIntervalId = null;
 		}
 
 		// Clean up file decorations
@@ -115,6 +160,7 @@ export default class ClawVaultPlugin extends Plugin {
 			this.graphEnhancer.cleanup();
 			this.graphEnhancer = null;
 		}
+		this.settingTab = null;
 
 		// Note: Don't detach leaves in onunload per Obsidian guidelines
 		// The view will be properly cleaned up by Obsidian
@@ -122,13 +168,22 @@ export default class ClawVaultPlugin extends Plugin {
 
 	async loadSettings(): Promise<void> {
 		const data = await this.loadData() as Partial<ClawVaultSettings> | null;
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+		const syncSettings = Object.assign({}, DEFAULT_SYNC_SETTINGS, data?.sync ?? {});
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data, {
+			sync: syncSettings,
+		});
 		
 		// Merge category colors with defaults
 		this.settings.categoryColors = Object.assign(
 			{},
 			DEFAULT_CATEGORY_COLORS,
 			this.settings.categoryColors
+		);
+
+		// Guard interval bounds and stale sync values
+		this.settings.sync.autoSyncInterval = Math.max(
+			MIN_SYNC_INTERVAL_MINUTES,
+			this.settings.sync.autoSyncInterval
 		);
 	}
 
@@ -184,8 +239,9 @@ export default class ClawVaultPlugin extends Plugin {
 		try {
 			const stats = await this.vaultReader.getVaultStats();
 			const activeTaskCount = stats.tasks.active + stats.tasks.open;
+			const syncSuffix = this.formatSyncStatusBarSuffix();
 			this.statusBarItem.setText(
-				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${activeTaskCount} tasks`
+				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${activeTaskCount} tasks${syncSuffix}`
 			);
 		} catch {
 			this.statusBarItem.setText("🐘 ClawVault");
@@ -215,6 +271,213 @@ export default class ClawVaultPlugin extends Plugin {
 		this.startRefreshInterval();
 	}
 
+	reconfigureSync(): void {
+		const serverUrl = this.settings.sync.serverUrl.trim();
+		const authEnabled =
+			this.settings.sync.authUsername.trim().length > 0 ||
+			this.settings.sync.authPassword.length > 0;
+
+		if (!serverUrl) {
+			this.syncClient = null;
+			this.syncEngine = null;
+			this.stopSyncInterval();
+			this.setSyncState({
+				status: "disconnected",
+				serverUrl: "",
+				message: "Sync server not configured",
+				progress: null,
+			});
+			return;
+		}
+
+		const clientConfig = {
+			serverUrl,
+			auth: authEnabled
+				? {
+						username: this.settings.sync.authUsername,
+						password: this.settings.sync.authPassword,
+				  }
+				: undefined,
+			timeout: 30000,
+		};
+
+		if (!this.syncClient) {
+			this.syncClient = new SyncClient(clientConfig);
+		} else {
+			this.syncClient.updateConfig(clientConfig);
+		}
+
+		if (!this.syncEngine) {
+			this.syncEngine = new SyncEngine(this.app, this.syncClient, this.settings.sync);
+		} else {
+			this.syncEngine.updateSettings(this.settings.sync);
+		}
+
+		this.setSyncState({
+			status: "idle",
+			serverUrl,
+			message: "Ready",
+			progress: null,
+		});
+		this.configureSyncInterval();
+	}
+
+	getSyncState(): SyncRuntimeState {
+		return {
+			...this.syncState,
+			serverUrl: this.settings.sync.serverUrl,
+			lastSyncTimestamp: this.settings.sync.lastSyncTimestamp,
+			lastSyncStats: this.settings.sync.lastSyncStats,
+		};
+	}
+
+	async syncNow(mode: SyncMode = "full", silent = false): Promise<SyncResult | null> {
+		if (!this.syncEngine || !this.syncClient) {
+			if (!silent) {
+				new Notice("ClawVault sync: configure a server URL first.");
+			}
+			this.setSyncState({
+				status: "disconnected",
+				message: "Sync server not configured",
+				progress: null,
+			});
+			return null;
+		}
+
+		if (this.syncState.status === "syncing") {
+			if (!silent) {
+				new Notice("ClawVault sync is already running.");
+			}
+			return null;
+		}
+
+		this.setSyncState({
+			status: "syncing",
+			message: "Sync in progress",
+			progress: {
+				stage: "planning",
+				current: 0,
+				total: 1,
+				message: "Planning sync...",
+			},
+		});
+
+		try {
+			const result = await this.syncEngine.sync(mode, (progress) => {
+				this.setSyncState({
+					status: "syncing",
+					message: progress.message ?? "Sync in progress",
+					progress,
+				});
+			});
+
+			this.settings.sync.lastSyncTimestamp = result.endedAt;
+			this.settings.sync.lastSyncStats = {
+				pulled: result.pulled,
+				pushed: result.pushed,
+				conflicts: result.conflicts,
+			};
+			await this.saveSettings();
+
+			const errorMessage =
+				result.errors.length > 0
+					? `Completed with ${result.errors.length} error${result.errors.length === 1 ? "" : "s"}`
+					: "Synced successfully";
+			this.setSyncState({
+				status: "idle",
+				message: errorMessage,
+				progress: null,
+			});
+
+			if (!silent) {
+				new Notice(
+					`ClawVault sync: ↓ ${result.pulled}, ↑ ${result.pushed}, ⚡ ${result.conflicts}`
+				);
+			}
+
+			if (result.pulled > 0 || result.pushed > 0) {
+				await this.refreshAll();
+			} else {
+				await this.refreshStatusViews();
+			}
+
+			return result;
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Unknown sync error";
+			this.setSyncState({
+				status: "error",
+				message,
+				progress: null,
+			});
+			if (!silent) {
+				new Notice(`ClawVault sync failed: ${message}`);
+			}
+			return null;
+		}
+	}
+
+	async testSyncConnection(): Promise<boolean> {
+		if (!this.settings.sync.serverUrl.trim()) {
+			new Notice("ClawVault sync: set a server URL first.");
+			return false;
+		}
+
+		this.reconfigureSync();
+		if (!this.syncClient) {
+			new Notice("ClawVault sync: failed to configure sync client.");
+			return false;
+		}
+
+		try {
+			const health = await this.syncClient.healthCheck();
+			this.setSyncState({
+				status: "idle",
+				message: `Connected (${health.status})`,
+				progress: null,
+			});
+			new Notice(`ClawVault sync connected to vault: ${health.vault}`);
+			return true;
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Unknown connection error";
+			this.setSyncState({
+				status: "error",
+				message,
+				progress: null,
+			});
+			new Notice(`ClawVault sync connection failed: ${message}`);
+			return false;
+		}
+	}
+
+	openPluginSettings(): void {
+		const settingApi = (
+			this.app as typeof this.app & {
+				setting?: {
+					open: () => void;
+					openTabById: (id: string) => void;
+				};
+			}
+		).setting;
+		settingApi?.open();
+		settingApi?.openTabById(this.manifest.id);
+		window.setTimeout(() => {
+			this.settingTab?.focusSyncSection();
+		}, 50);
+	}
+
+	async focusSyncStatusSection(): Promise<void> {
+		await this.activateStatusView();
+		const leaves = this.app.workspace.getLeavesOfType(STATUS_VIEW_TYPE);
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof ClawVaultStatusView) {
+				view.focusSyncSection();
+			}
+		}
+	}
+
 	/**
 	 * Refresh all plugin data
 	 */
@@ -226,13 +489,7 @@ export default class ClawVaultPlugin extends Plugin {
 		await this.updateStatusBar();
 
 		// Refresh status view if open
-		const leaves = this.app.workspace.getLeavesOfType(STATUS_VIEW_TYPE);
-		for (const leaf of leaves) {
-			const view = leaf.view;
-			if (view instanceof ClawVaultStatusView) {
-				await view.refresh();
-			}
-		}
+		await this.refreshStatusViews();
 
 		// Task board removed — Kanban plugin handles task visualization
 
@@ -252,5 +509,90 @@ export default class ClawVaultPlugin extends Plugin {
 	updateGraphStyles(): void {
 		this.graphEnhancer?.applyCategoryVariables();
 		this.graphEnhancer?.scheduleEnhance(40);
+	}
+
+	private configureSyncInterval(): void {
+		this.stopSyncInterval();
+
+		if (
+			!this.settings.sync.autoSyncEnabled ||
+			!this.settings.sync.serverUrl.trim()
+		) {
+			return;
+		}
+
+		const intervalMinutes = Math.max(
+			MIN_SYNC_INTERVAL_MINUTES,
+			this.settings.sync.autoSyncInterval
+		);
+		const intervalMs = intervalMinutes * 60 * 1000;
+		this.syncIntervalId = window.setInterval(() => {
+			void this.syncNow("full", true);
+		}, intervalMs);
+		this.registerInterval(this.syncIntervalId);
+	}
+
+	private stopSyncInterval(): void {
+		if (this.syncIntervalId !== null) {
+			window.clearInterval(this.syncIntervalId);
+			this.syncIntervalId = null;
+		}
+	}
+
+	private setSyncState(next: Partial<SyncRuntimeState>): void {
+		this.syncState = {
+			...this.syncState,
+			...next,
+			serverUrl: this.settings.sync.serverUrl,
+			lastSyncTimestamp: this.settings.sync.lastSyncTimestamp,
+			lastSyncStats: this.settings.sync.lastSyncStats,
+		};
+		void this.updateStatusBar();
+		this.refreshSyncStateViews();
+	}
+
+	private refreshSyncStateViews(): void {
+		const leaves = this.app.workspace.getLeavesOfType(STATUS_VIEW_TYPE);
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof ClawVaultStatusView) {
+				view.refreshSyncState();
+			}
+		}
+	}
+
+	private async refreshStatusViews(): Promise<void> {
+		const leaves = this.app.workspace.getLeavesOfType(STATUS_VIEW_TYPE);
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof ClawVaultStatusView) {
+				await view.refresh();
+			}
+		}
+	}
+
+	private formatSyncStatusBarSuffix(): string {
+		if (this.syncState.status === "syncing") {
+			return " · ↕ syncing...";
+		}
+
+		if (!this.settings.sync.lastSyncTimestamp) {
+			return "";
+		}
+
+		const diffMs = Date.now() - this.settings.sync.lastSyncTimestamp;
+		const diffMinutes = Math.floor(diffMs / 60000);
+		if (diffMinutes < 1) {
+			return " · ↕ synced just now";
+		}
+		if (diffMinutes < 60) {
+			return ` · ↕ synced ${diffMinutes}m ago`;
+		}
+		const diffHours = Math.floor(diffMinutes / 60);
+		if (diffHours < 24) {
+			return ` · ↕ synced ${diffHours}h ago`;
+		}
+		const diffDays = Math.floor(diffHours / 24);
+		return ` · ↕ synced ${diffDays}d ago`;
 	}
 }

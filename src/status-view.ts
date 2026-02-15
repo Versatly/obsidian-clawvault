@@ -7,6 +7,7 @@ import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
 import type ClawVaultPlugin from "./main";
 import { COMMAND_IDS, STATUS_VIEW_TYPE } from "./constants";
 import type { ObservationSession, ParsedTask, VaultStats } from "./vault-reader";
+import { renderSyncStatusSection } from "./sync/sync-status-view";
 
 interface StatusViewData {
 	stats: VaultStats;
@@ -23,6 +24,8 @@ interface StatusViewData {
 export class ClawVaultStatusView extends ItemView {
 	plugin: ClawVaultPlugin;
 	private statusContentEl: HTMLElement | null = null;
+	private syncSectionEl: HTMLElement | null = null;
+	private syncSectionHostEl: HTMLElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: ClawVaultPlugin) {
 		super(leaf);
@@ -54,6 +57,8 @@ export class ClawVaultStatusView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.statusContentEl = null;
+		this.syncSectionEl = null;
+		this.syncSectionHostEl = null;
 	}
 
 	/**
@@ -108,6 +113,9 @@ export class ClawVaultStatusView extends ItemView {
 			text: `Files: ${this.formatNumber(stats.fileCount)} | Nodes: ${this.formatNumber(stats.nodeCount)} | Edges: ${this.formatNumber(stats.edgeCount)}`,
 			cls: "clawvault-status-counts",
 		});
+
+		this.syncSectionHostEl = this.statusContentEl.createDiv();
+		this.renderSyncSection();
 
 		// Memory Graph section
 		if (stats.nodeCount > 0 || Object.keys(graphTypes).length > 0) {
@@ -436,5 +444,41 @@ export class ClawVaultStatusView extends ItemView {
 		if (commandManager?.executeCommandById) {
 			await commandManager.executeCommandById(commandId);
 		}
+	}
+
+	refreshSyncState(): void {
+		this.renderSyncSection();
+	}
+
+	focusSyncSection(): void {
+		if (!this.syncSectionEl) return;
+		this.syncSectionEl.scrollIntoView({
+			behavior: "smooth",
+			block: "center",
+		});
+		this.syncSectionEl.classList.add("clawvault-sync-highlight");
+		window.setTimeout(() => {
+			this.syncSectionEl?.classList.remove("clawvault-sync-highlight");
+		}, 1200);
+	}
+
+	private renderSyncSection(): void {
+		if (!this.syncSectionHostEl) return;
+		this.syncSectionHostEl.empty();
+		this.syncSectionEl = renderSyncStatusSection(
+			this.syncSectionHostEl,
+			this.plugin.getSyncState(),
+			{
+				onSyncNow: () => {
+					void this.plugin.syncNow("full");
+				},
+				onConfigure: () => {
+					this.plugin.openPluginSettings();
+				},
+				onRetry: () => {
+					void this.plugin.testSyncConnection();
+				},
+			}
+		);
 	}
 }
