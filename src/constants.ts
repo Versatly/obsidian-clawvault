@@ -73,7 +73,14 @@ export const COMMAND_IDS = {
 	GENERATE_CANVAS_FROM_TEMPLATE: "clawvault-generate-canvas-from-template",
 	REFRESH_STATS: "clawvault-refresh-stats",
 	SHOW_OPEN_LOOPS: "clawvault-show-open-loops",
+	SYNC_NOW: "clawvault-sync-now",
+	SYNC_PULL: "clawvault-sync-pull",
+	SYNC_PUSH: "clawvault-sync-push",
+	SHOW_SYNC_STATUS: "clawvault-sync-status",
+	CONFIGURE_SYNC: "clawvault-sync-configure",
 } as const;
+
+export const MIN_SYNC_INTERVAL_MINUTES = 5;
 
 export const CANVAS_TEMPLATE_IDS = {
 	PROJECT_BOARD: "project-board",

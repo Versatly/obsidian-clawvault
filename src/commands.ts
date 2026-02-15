@@ -6,7 +6,7 @@
  * Plugin focuses on: status panel, task creation, vault stats.
  */
 
-import { Notice, TFile, TFolder } from "obsidian";
+import { Notice } from "obsidian";
 import type ClawVaultPlugin from "./main";
 import { COMMAND_IDS, STATUS_VIEW_TYPE } from "./constants";
 import {
@@ -20,6 +20,52 @@ import {
  * Register all ClawVault commands
  */
 export function registerCommands(plugin: ClawVaultPlugin): void {
+	// Sync now command
+	plugin.addCommand({
+		id: COMMAND_IDS.SYNC_NOW,
+		name: "ClawVault: Sync Now",
+		hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "s" }],
+		callback: () => {
+			void plugin.syncNow("full");
+		},
+	});
+
+	// Pull-only sync command
+	plugin.addCommand({
+		id: COMMAND_IDS.SYNC_PULL,
+		name: "ClawVault: Sync Pull",
+		callback: () => {
+			void plugin.syncNow("pull");
+		},
+	});
+
+	// Push-only sync command
+	plugin.addCommand({
+		id: COMMAND_IDS.SYNC_PUSH,
+		name: "ClawVault: Sync Push",
+		callback: () => {
+			void plugin.syncNow("push");
+		},
+	});
+
+	// Focus sync status in the sidebar
+	plugin.addCommand({
+		id: COMMAND_IDS.SHOW_SYNC_STATUS,
+		name: "ClawVault: Show Sync Status",
+		callback: () => {
+			void plugin.focusSyncStatusSection();
+		},
+	});
+
+	// Open sync settings
+	plugin.addCommand({
+		id: COMMAND_IDS.CONFIGURE_SYNC,
+		name: "ClawVault: Configure Sync",
+		callback: () => {
+			plugin.openPluginSettings();
+		},
+	});
+
 	// Quick Capture command
 	plugin.addCommand({
 		id: COMMAND_IDS.QUICK_CAPTURE,
