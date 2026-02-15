@@ -7,14 +7,13 @@ import { Plugin, WorkspaceLeaf } from "obsidian";
 import { ClawVaultSettings, ClawVaultSettingTab, DEFAULT_SETTINGS } from "./settings";
 import { VaultReader } from "./vault-reader";
 import { ClawVaultStatusView } from "./status-view";
-// Task board view removed — Kanban plugin handles task visualization
 import { FileDecorations } from "./decorations";
 import { GraphEnhancer } from "./graph-enhancer";
 import { registerCommands } from "./commands";
 import {
+	COMMAND_IDS,
 	DEFAULT_CATEGORY_COLORS,
 	STATUS_VIEW_TYPE,
-	// TASK_BOARD_VIEW_TYPE removed — using Kanban plugin
 } from "./constants";
 
 export default class ClawVaultPlugin extends Plugin {
@@ -36,8 +35,6 @@ export default class ClawVaultPlugin extends Plugin {
 		this.registerView(STATUS_VIEW_TYPE, (leaf: WorkspaceLeaf) => {
 			return new ClawVaultStatusView(leaf, this);
 		});
-
-		// Task board view removed — Kanban plugin is the task UI
 
 		// Add ribbon icon
 		this.addRibbonIcon("database", "ClawVault status", () => {
@@ -87,7 +84,7 @@ export default class ClawVaultPlugin extends Plugin {
 		try {
 			// Trigger the setup command programmatically
 			(this.app as unknown as { commands: { executeCommandById: (id: string) => void } })
-				.commands.executeCommandById("clawvault-setup-graph-colors");
+				.commands.executeCommandById(COMMAND_IDS.SETUP_GRAPH_COLORS);
 			
 			// Mark as configured so we don't repeat
 			this.settings.graphColorsConfigured = true;
@@ -160,8 +157,6 @@ export default class ClawVaultPlugin extends Plugin {
 		}
 	}
 
-	// Task board view removed — use Kanban plugin + Board.md
-
 	/**
 	 * Update status bar visibility based on settings
 	 */
@@ -183,9 +178,8 @@ export default class ClawVaultPlugin extends Plugin {
 
 		try {
 			const stats = await this.vaultReader.getVaultStats();
-			const activeTaskCount = stats.tasks.active + stats.tasks.open;
 			this.statusBarItem.setText(
-				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${activeTaskCount} tasks`
+				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${stats.edgeCount.toLocaleString()} edges`
 			);
 		} catch {
 			this.statusBarItem.setText("🐘 ClawVault");
@@ -233,8 +227,6 @@ export default class ClawVaultPlugin extends Plugin {
 				await view.refresh();
 			}
 		}
-
-		// Task board removed — Kanban plugin handles task visualization
 
 		// Update file decorations
 		if (this.fileDecorations) {

@@ -5,7 +5,7 @@
 
 import { TFile } from "obsidian";
 import type ClawVaultPlugin from "./main";
-import { DEFAULT_CATEGORY_COLORS, TASK_PRIORITY } from "./constants";
+import { DEFAULT_CATEGORY_COLORS } from "./constants";
 
 export class GraphEnhancer {
 	private plugin: ClawVaultPlugin;
@@ -143,7 +143,7 @@ export class GraphEnhancer {
 		}
 
 		const priority = this.getPriority(frontmatter);
-		const isCritical = priority === TASK_PRIORITY.CRITICAL;
+		const isCritical = priority === "critical";
 		graphNode.classList.toggle("clawvault-node-critical", isCritical);
 	}
 

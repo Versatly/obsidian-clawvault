@@ -1,20 +1,14 @@
 /**
  * ClawVault Commands
  * Command palette registrations
- * 
- * Canvas dashboards removed — Kanban plugin is the task UI.
- * Plugin focuses on: status panel, task creation, vault stats.
+ *
+ * Plugin focuses on vault health monitoring + quick capture.
  */
 
-import { Notice, TFile, TFolder } from "obsidian";
+import { Notice } from "obsidian";
 import type ClawVaultPlugin from "./main";
 import { COMMAND_IDS, STATUS_VIEW_TYPE } from "./constants";
-import {
-	BlockedModal,
-	CaptureModal,
-	OpenLoopsModal,
-	TaskModal,
-} from "./modals";
+import { CaptureModal } from "./modals";
 
 /**
  * Register all ClawVault commands
@@ -30,25 +24,6 @@ export function registerCommands(plugin: ClawVaultPlugin): void {
 		},
 	});
 
-	// Add Task command
-	plugin.addCommand({
-		id: COMMAND_IDS.ADD_TASK,
-		name: "ClawVault: Add Task",
-		hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "t" }],
-		callback: () => {
-			new TaskModal(plugin.app).open();
-		},
-	});
-
-	// View Blocked command
-	plugin.addCommand({
-		id: COMMAND_IDS.VIEW_BLOCKED,
-		name: "ClawVault: View Blocked Tasks",
-		callback: () => {
-			new BlockedModal(plugin.app, plugin.vaultReader).open();
-		},
-	});
-
 	// Open Status Panel command
 	plugin.addCommand({
 		id: COMMAND_IDS.OPEN_STATUS_PANEL,
@@ -60,7 +35,7 @@ export function registerCommands(plugin: ClawVaultPlugin): void {
 
 	// Open Kanban Board command
 	plugin.addCommand({
-		id: "clawvault-open-kanban",
+		id: COMMAND_IDS.OPEN_KANBAN_BOARD,
 		name: "ClawVault: Open Kanban Board",
 		callback: () => {
 			void plugin.app.workspace.openLinkText("Board.md", "", "tab");
@@ -76,18 +51,9 @@ export function registerCommands(plugin: ClawVaultPlugin): void {
 		},
 	});
 
-	// Show Open Loops command
-	plugin.addCommand({
-		id: COMMAND_IDS.SHOW_OPEN_LOOPS,
-		name: "ClawVault: Show Open Loops",
-		callback: () => {
-			new OpenLoopsModal(plugin.app, plugin.vaultReader).open();
-		},
-	});
-
 	// Setup Graph Colors command
 	plugin.addCommand({
-		id: "clawvault-setup-graph-colors",
+		id: COMMAND_IDS.SETUP_GRAPH_COLORS,
 		name: "ClawVault: Setup graph colors (neural style)",
 		callback: () => {
 			void setupGraphColors(plugin);
