@@ -46,12 +46,13 @@ export class SyncClient {
 	async healthCheck(): Promise<{ status: string; vault: string }> {
 		const response = await this.request("/.clawvault/health", "GET");
 		const payload = this.safeJson(response.text);
-		if (!payload || typeof payload !== "object") {
+		const record = this.toRecord(payload);
+		if (!record) {
 			throw new Error("Unexpected health response");
 		}
 
-		const status = this.readString(payload, ["status"]) ?? "unknown";
-		const vault = this.readString(payload, ["vault", "name"]) ?? "unknown";
+		const status = this.readString(record, ["status"]) ?? "unknown";
+		const vault = this.readString(record, ["vault", "name"]) ?? "unknown";
 		return { status, vault };
 	}
 
