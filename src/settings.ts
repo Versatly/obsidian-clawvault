@@ -57,15 +57,9 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		// Header
-		new Setting(containerEl).setName("ClawVault settings").setHeading();
-
-		// General section
-		new Setting(containerEl).setName("General").setHeading();
-
 		new Setting(containerEl)
 			.setName("Vault path override")
-			.setDesc("Optional: Override the vault path (leave empty to auto-detect)")
+			.setDesc("Override the vault path (leave empty to auto-detect)")
 			.addText((text) =>
 				text
 					.setPlaceholder("Auto-detect")
@@ -178,10 +172,10 @@ export class ClawVaultSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName("About").setHeading();
 		
 		containerEl.createEl("p", {
-			text: "ClawVault is a visual memory health plugin for Obsidian. It provides graph insights, quick capture, and vault statistics.",
+			text: "Visual memory health plugin for Obsidian. Provides graph insights, quick capture, and vault statistics.",
 		});
 		containerEl.createEl("p", {
-			text: "For more information, visit the ClawVault documentation.",
+			text: "For more information, visit the documentation.",
 		});
 	}
 
