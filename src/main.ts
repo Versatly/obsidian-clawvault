@@ -37,7 +37,7 @@ export default class ClawVaultPlugin extends Plugin {
 		});
 
 		// Add ribbon icon
-		this.addRibbonIcon("database", "ClawVault status", () => {
+		this.addRibbonIcon("database", "Open status panel", () => {
 			void this.activateStatusView();
 		});
 
@@ -182,7 +182,7 @@ export default class ClawVaultPlugin extends Plugin {
 				`🐘 ${stats.nodeCount.toLocaleString()} nodes · ${stats.edgeCount.toLocaleString()} edges`
 			);
 		} catch {
-			this.statusBarItem.setText("🐘 ClawVault");
+			this.statusBarItem.setText("🐘 vault stats");
 		}
 	}
 
