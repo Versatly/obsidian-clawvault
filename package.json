@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "obsidian-clawvault",
+	"version": "0.1.0",
+	"description": "Visual memory management for Obsidian vaults — colored graph, task dashboard, and vault stats.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

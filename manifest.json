@@ -3,7 +3,7 @@
   "name": "ClawVault",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Visual memory management for ClawVault vaults — colored graph, task dashboard, vault stats, and Tailscale sync.",
+  "description": "Visual memory management for Obsidian vaults — colored graph, task dashboard, and vault stats.",
   "author": "Versatly",
   "authorUrl": "https://clawvault.dev",
   "fundingUrl": "https://github.com/Versatly/clawvault",

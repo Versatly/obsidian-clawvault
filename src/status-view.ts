@@ -31,7 +31,7 @@ export class ClawVaultStatusView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "ClawVault status";
+		return "Clawvault status";
 	}
 
 	getIcon(): string {
@@ -86,7 +86,7 @@ export class ClawVaultStatusView extends ItemView {
 
 		// Header
 		const header = this.statusContentEl.createDiv({ cls: "clawvault-status-header" });
-		header.createEl("h3", { text: "🐘 ClawVault" });
+		header.createEl("h3", { text: "Clawvault status" });
 		header.createEl("hr");
 
 		// Vault info
@@ -102,7 +102,7 @@ export class ClawVaultStatusView extends ItemView {
 
 		// Memory Graph section
 		const graphSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
-		graphSection.createEl("h4", { text: "Memory Graph" });
+		graphSection.createEl("h4", { text: "Memory graph" });
 
 		const graphStats = graphSection.createDiv({ cls: "clawvault-graph-stats" });
 		graphStats.createDiv({
@@ -158,7 +158,7 @@ export class ClawVaultStatusView extends ItemView {
 		// Kanban board link
 		const kanbanSection = this.statusContentEl.createDiv({ cls: "clawvault-status-section" });
 		const kanbanLink = kanbanSection.createEl("a", {
-			text: "📋 Open Kanban Board",
+			text: "Open kanban board",
 			cls: "clawvault-kanban-link",
 		});
 		kanbanLink.addEventListener("click", (event) => {
@@ -196,7 +196,7 @@ export class ClawVaultStatusView extends ItemView {
 		if (!this.statusContentEl) return;
 
 		const errorDiv = this.statusContentEl.createDiv({ cls: "clawvault-status-error" });
-		errorDiv.createEl("h4", { text: "🐘 ClawVault" });
+		errorDiv.createEl("h4", { text: "Clawvault status" });
 		errorDiv.createEl("p", {
 			text: "Could not load vault statistics.",
 			cls: "clawvault-error-message",
